@@ -1,0 +1,36 @@
+{
+  "request": {
+    "method": "GET",
+    "url": "https://app.asana.com/api/1.0/users/me",
+    "headers": {
+      "Accept": "application/json"
+    },
+    "body": ""
+  },
+  "response": {
+    "status_code": 200,
+    "headers": {
+      "Asana-Change": "name=cross_workspace_deprecation;info=https://forum.asana.com/t/change-get-projects-get-users-and-get-tags-will-require-a-workspace-or-team/1031581,name=new_user_task_lists;info=https://forum.asana.com/t/update-on-our-planned-api-changes-to-user-task-lists-a-k-a-my-tasks/103828,name=new_goal_memberships;info=https://forum.asana.com/t/launched-team-sharing-for-goals/378601;affected=true",
+      "Content-Length": "1126",
+      "Content-Security-Policy": "report-uri https://app.asana.com/-/csp_report?report_only=false;default-src 'none';frame-src 'none';frame-ancestors 'none'",
+      "Content-Type": "application/json; charset=UTF-8",
+      "Date": "Sat, 05 Apr 2025 20:10:02 GMT",
+      "Referrer-Policy": "strict-origin-when-cross-origin",
+      "Server": "istio-envoy",
+      "Server-Timing": "cdn-upstream-layer;desc=\"REC\",cdn-upstream-dns;dur=1,cdn-upstream-connect;dur=0,cdn-upstream-fbl;dur=266,cdn-cache-miss,cdn-pop;desc=\"JFK52-P8\",cdn-rid;desc=\"NLXlgbVlfwlFpdgEzoiZw4oIpTnLB6X7nUw-Wy3ZgUO1d1RE_AVWeA==\",cdn-downstream-fbl;dur=285",
+      "Strict-Transport-Security": "max-age=31536000; includeSubDomains; preload",
+      "Via": "1.1 0f73566e099d1b7819d92fde74c3925e.cloudfront.net (CloudFront)",
+      "X-Amz-Cf-Id": "NLXlgbVlfwlFpdgEzoiZw4oIpTnLB6X7nUw-Wy3ZgUO1d1RE_AVWeA==",
+      "X-Amz-Cf-Pop": "JFK52-P8",
+      "X-Asana-Api-Version": "1.1",
+      "X-Cache": "Miss from cloudfront",
+      "X-Content-Type-Options": "nosniff",
+      "X-Envoy-Upstream-Service-Time": "263",
+      "X-Frame-Options": "DENY",
+      "X-Robots-Tag": "none",
+      "X-Ua-Compatible": "IE=edge,chrome=1",
+      "X-Xss-Protection": "1; mode=block"
+    },
+    "body": "{\"data\":{\"gid\":\"1200460073576649\",\"email\":\"david.w.ackerman@gmail.com\",\"name\":\"David Ackerman\",\"photo\":{\"image_21x21\":\"https://s3.us-east-1.amazonaws.com/asana-user-private-us-east-1/assets/1200459986504480/profile_photos/1205263571429788/ba9df95428ab0c7e99ec65893b1a8f0a_21x21.png\",\"image_27x27\":\"https://s3.us-east-1.amazonaws.com/asana-user-private-us-east-1/assets/1200459986504480/profile_photos/1205263571429788/ba9df95428ab0c7e99ec65893b1a8f0a_27x27.png\",\"image_36x36\":\"https://s3.us-east-1.amazonaws.com/asana-user-private-us-east-1/assets/1200459986504480/profile_photos/1205263571429788/ba9df95428ab0c7e99ec65893b1a8f0a_36x36.png\",\"image_60x60\":\"https://s3.us-east-1.amazonaws.com/asana-user-private-us-east-1/assets/1200459986504480/profile_photos/1205263571429788/ba9df95428ab0c7e99ec65893b1a8f0a_60x60.png\",\"image_128x128\":\"https://s3.us-east-1.amazonaws.com/asana-user-private-us-east-1/assets/1200459986504480/profile_photos/1205263571429788/ba9df95428ab0c7e99ec65893b1a8f0a_128x128.png\"},\"resource_type\":\"user\",\"workspaces\":[{\"gid\":\"1200459986504480\",\"name\":\"Ackerman Household\",\"resource_type\":\"workspace\"}]}}"
+  }
+}

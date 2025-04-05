@@ -1,0 +1,36 @@
+{
+  "request": {
+    "method": "GET",
+    "url": "https://app.asana.com/api/1.0/sections/1200554041623447/tasks?completed_since=now\u0026opt_fields=name,notes,completed,due_on,due_at",
+    "headers": {
+      "Accept": "application/json"
+    },
+    "body": ""
+  },
+  "response": {
+    "status_code": 200,
+    "headers": {
+      "Asana-Change": "name=cross_workspace_deprecation;info=https://forum.asana.com/t/change-get-projects-get-users-and-get-tags-will-require-a-workspace-or-team/1031581,name=new_user_task_lists;info=https://forum.asana.com/t/update-on-our-planned-api-changes-to-user-task-lists-a-k-a-my-tasks/103828,name=new_goal_memberships;info=https://forum.asana.com/t/launched-team-sharing-for-goals/378601;affected=true,name=cross_workspace_deprecation;info=https://forum.asana.com/t/change-get-projects-get-users-and-get-tags-will-require-a-workspace-or-team/1031581,name=new_user_task_lists;info=https://forum.asana.com/t/update-on-our-planned-api-changes-to-user-task-lists-a-k-a-my-tasks/103828,name=new_goal_memberships;info=https://forum.asana.com/t/launched-team-sharing-for-goals/378601;affected=true",
+      "Content-Length": "128",
+      "Content-Security-Policy": "report-uri https://app.asana.com/-/csp_report?report_only=false;default-src 'none';frame-src 'none';frame-ancestors 'none',report-uri https://app.asana.com/-/csp_report?report_only=false;default-src 'none';frame-src 'none';frame-ancestors 'none'",
+      "Content-Type": "application/json; charset=UTF-8",
+      "Date": "Sat, 05 Apr 2025 20:10:03 GMT",
+      "Referrer-Policy": "strict-origin-when-cross-origin",
+      "Server": "istio-envoy",
+      "Server-Timing": "cdn-upstream-layer;desc=\"REC\",cdn-upstream-dns;dur=0,cdn-upstream-connect;dur=0,cdn-upstream-fbl;dur=100,cdn-cache-miss,cdn-pop;desc=\"JFK52-P8\",cdn-rid;desc=\"ct1S79cniaXuZ4aC6ONcmBcExKtOBMPUOMTJXqCwI7fRMVhsgav1vw==\",cdn-downstream-fbl;dur=127",
+      "Strict-Transport-Security": "max-age=31536000; includeSubDomains; preload",
+      "Via": "1.1 0f73566e099d1b7819d92fde74c3925e.cloudfront.net (CloudFront)",
+      "X-Amz-Cf-Id": "ct1S79cniaXuZ4aC6ONcmBcExKtOBMPUOMTJXqCwI7fRMVhsgav1vw==",
+      "X-Amz-Cf-Pop": "JFK52-P8",
+      "X-Asana-Api-Version": "1.1",
+      "X-Cache": "Miss from cloudfront",
+      "X-Content-Type-Options": "nosniff",
+      "X-Envoy-Upstream-Service-Time": "97",
+      "X-Frame-Options": "DENY,DENY",
+      "X-Robots-Tag": "none",
+      "X-Ua-Compatible": "IE=edge,chrome=1",
+      "X-Xss-Protection": "1; mode=block,1; mode=block"
+    },
+    "body": "{\"data\":[{\"gid\":\"1209877735475710\",\"completed\":false,\"due_at\":null,\"due_on\":\"2025-01-31\",\"name\":\"testing 123 task\",\"notes\":\"\"}]}"
+  }
+}
