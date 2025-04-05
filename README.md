@@ -157,6 +157,18 @@ The development process followed a "minimal viable slice" approach, starting wit
 - Add colorful output
 - Implement interactive mode with task completion
 
+## 🚢 Releasing
+
+To create a new release:
+
+1. Create and push a new tag:
+   ```bash
+   git tag -a v0.1.0 -m "First release"
+   git push origin v0.1.0
+   ```
+
+2. GitHub Actions will automatically build and publish the release using GoReleaser.
+
 ## 📄 License
 
 MIT
