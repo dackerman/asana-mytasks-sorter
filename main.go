@@ -1,14 +1,23 @@
 package main
 
 import (
+	"encoding/json"
+	"flag"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/dackerman/asana-tasks-sorter/internal/asana"
 )
 
 func main() {
+	// Define command-line flags
+	configFile := flag.String("config", "sections_config.json", "Path to section configuration file")
+	dryRun := flag.Bool("dry-run", false, "Only display changes without moving tasks")
+	flag.Parse()
+
 	// Get access token from environment
 	accessToken := os.Getenv("ASANA_ACCESS_TOKEN")
 	if accessToken == "" {
@@ -19,10 +28,43 @@ func main() {
 	// Create Asana client
 	client := asana.NewClient(accessToken)
 
-	run(client)
+	// Load section config
+	config, err := loadSectionConfig(*configFile)
+	if err != nil {
+		fmt.Printf("Error loading section config: %v\nUsing default configuration\n", err)
+		config = asana.DefaultSectionConfig()
+	}
+
+	run(client, config, *dryRun)
 }
 
-func run(client *asana.Client) {
+// loadSectionConfig loads the section configuration from a JSON file
+func loadSectionConfig(configPath string) (asana.SectionConfig, error) {
+	// Handle relative paths
+	if !filepath.IsAbs(configPath) {
+		absPath, err := filepath.Abs(configPath)
+		if err != nil {
+			return asana.SectionConfig{}, fmt.Errorf("failed to resolve absolute path: %v", err)
+		}
+		configPath = absPath
+	}
+
+	// Read config file
+	configData, err := os.ReadFile(configPath)
+	if err != nil {
+		return asana.SectionConfig{}, fmt.Errorf("failed to read config file: %v", err)
+	}
+
+	// Parse JSON
+	var config asana.SectionConfig
+	if err := json.Unmarshal(configData, &config); err != nil {
+		return asana.SectionConfig{}, fmt.Errorf("failed to parse config file: %v", err)
+	}
+
+	return config, nil
+}
+
+func run(client *asana.Client, config asana.SectionConfig, dryRun bool) {
 	// Get current user
 	user, err := client.GetCurrentUser()
 	if err != nil {
@@ -61,24 +103,127 @@ func run(client *asana.Client) {
 		os.Exit(1)
 	}
 
-	// Print tasks in "My Tasks" by section
+	// Create a map to store section names to their GIDs
+	sectionNameToGID := make(map[string]string)
+	for _, section := range sections {
+		sectionNameToGID[section.Name] = section.GID
+	}
+
+	// Ensure required sections exist, create them if needed
+	requiredSections := []string{
+		config.Overdue,
+		config.DueToday,
+		config.DueThisWeek,
+		config.DueLater,
+		config.NoDate,
+	}
+
+	if !dryRun {
+		for _, sectionName := range requiredSections {
+			if _, exists := sectionNameToGID[sectionName]; !exists {
+				fmt.Printf("Creating section: %s\n", sectionName)
+				newSection, err := client.CreateSection(userTaskList.GID, sectionName)
+				if err != nil {
+					fmt.Printf("Error creating section '%s': %v\n", sectionName, err)
+					continue
+				}
+				sectionNameToGID[newSection.Name] = newSection.GID
+				sections = append(sections, *newSection)
+			}
+		}
+	}
+
+	// Collect all tasks from all sections
+	allTasks := []asana.Task{}
+	for _, section := range sections {
+		tasks, err := client.GetTasksInSection(section.GID)
+		if err != nil {
+			fmt.Printf("Error getting tasks for section %s: %v\n", section.Name, err)
+			continue
+		}
+		allTasks = append(allTasks, tasks...)
+	}
+
+	// Sort tasks into categories based on due date
+	categorizedTasks := make(map[asana.TaskCategory][]asana.Task)
+	now := time.Now()
+
+	for _, task := range allTasks {
+		category := task.GetTaskCategory(now)
+		categorizedTasks[category] = append(categorizedTasks[category], task)
+	}
+
+	// Map categories to section names
+	categoryToSection := map[asana.TaskCategory]string{
+		asana.Overdue:     config.Overdue,
+		asana.DueToday:    config.DueToday,
+		asana.DueThisWeek: config.DueThisWeek,
+		asana.DueLater:    config.DueLater,
+		asana.NoDate:      config.NoDate,
+	}
+
+	// Move tasks to appropriate sections
+	tasksMoved := 0
+	if !dryRun {
+		fmt.Println("\nMoving tasks to appropriate sections...")
+		for category, sectionName := range categoryToSection {
+			sectionGID, exists := sectionNameToGID[sectionName]
+			if !exists {
+				fmt.Printf("Error: Section '%s' not found, skipping tasks\n", sectionName)
+				continue
+			}
+
+			tasks := categorizedTasks[category]
+			for _, task := range tasks {
+				// Find the current section of the task
+				var currentSectionName string
+				for _, section := range sections {
+					secTasks, err := client.GetTasksInSection(section.GID)
+					if err != nil {
+						continue
+					}
+					for _, secTask := range secTasks {
+						if secTask.GID == task.GID {
+							currentSectionName = section.Name
+							break
+						}
+					}
+					if currentSectionName != "" {
+						break
+					}
+				}
+
+				// Skip if task is already in the correct section
+				if currentSectionName == sectionName {
+					fmt.Printf("Task '%s' already in correct section: %s\n", task.Name, sectionName)
+					continue
+				}
+
+				// Move task to the new section
+				fmt.Printf("Moving task '%s' to section: %s\n", task.Name, sectionName)
+				err := client.MoveTaskToSection(sectionGID, task.GID)
+				if err != nil {
+					fmt.Printf("Error moving task '%s': %v\n", task.Name, err)
+				} else {
+					tasksMoved++
+				}
+			}
+		}
+		fmt.Printf("\nMoved %d tasks to their appropriate sections\n", tasksMoved)
+	}
+
+	// Print tasks by category in a concise format
 	fmt.Println("\nMy Asana Tasks:")
 	fmt.Println("==============")
 
 	totalTasks := 0
 	sectionsWithTasks := 0
 
-	// Loop through each section and get its tasks
-	for _, section := range sections {
-		// Get tasks for this section
-		tasks, err := client.GetTasksInSection(section.GID)
-		if err != nil {
-			fmt.Printf("Error getting tasks for section %s: %v\n", section.Name, err)
-			continue
-		}
-
+	// Print tasks by category
+	for category, sectionName := range categoryToSection {
+		tasks := categorizedTasks[category]
 		if len(tasks) > 0 {
-			fmt.Printf("\n## %s (%d tasks)\n", section.Name, len(tasks))
+			fmt.Printf("\n## %s (%d tasks)\n", sectionName, len(tasks))
 			sectionsWithTasks++
 
 			for i, task := range tasks {
@@ -90,20 +235,17 @@ func run(client *asana.Client) {
 					taskLine = fmt.Sprintf("%s (%s)", taskLine, task.DueOn.Format("2006-01-02"))
 				}
 
-				// Print task
-				fmt.Println(taskLine)
-
-				// Print notes if present
+				// Add a short preview of notes if present
 				if task.Notes != "" {
-					// Indent notes
-					notes := strings.Split(task.Notes, "\n")
-					for _, note := range notes {
-						fmt.Printf("     %s\n", note)
+					// Take first line of notes, truncate if too long
+					firstLine := strings.Split(task.Notes, "\n")[0]
+					if len(firstLine) > 40 {
+						firstLine = firstLine[:37] + "..."
 					}
+					taskLine = fmt.Sprintf("%s - %s", taskLine, firstLine)
 				}
-
-				// Add blank line between tasks
-				fmt.Println()
+				
+				fmt.Println(taskLine)
 			}
 
 			totalTasks += len(tasks)
@@ -114,5 +256,9 @@ func run(client *asana.Client) {
 		fmt.Println("No tasks found in any section")
 	} else {
 		fmt.Printf("\nFound %d tasks in %d sections\n", totalTasks, sectionsWithTasks)
+	}
+
+	if dryRun {
+		fmt.Println("\nThis was a dry run. To actually move tasks, run without the --dry-run flag.")
 	}
 }
