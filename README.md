@@ -1,6 +1,6 @@
 # Asana Tasks Sorter
 
-![Asana Logo](https://assets.asana.biz/m/5d807fb5d4e2a5ff/original/asana-logo-freelogodesign.png)
+![Cute Mascot](assets/robot.png)
 
 ## 📋 Overview
 
