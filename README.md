@@ -41,27 +41,32 @@ export ASANA_ACCESS_TOKEN="your_asana_personal_access_token"
 
 ## 🖥️ Usage
 
-Run the tool:
+Run the tool (requires the `--config` parameter):
 
 ```bash
-./asana-tasks-sorter
+./asana-tasks-sorter --config default
 ```
 
 Options:
 
 ```bash
 # Show detailed help information
-./asana-tasks-sorter -help
+./asana-tasks-sorter --help
+
+# Use the built-in default configuration
+./asana-tasks-sorter --config default
 
 # Use a custom section configuration file
-./asana-tasks-sorter -config path/to/your/config.json
+./asana-tasks-sorter --config path/to/your/config.json
 
 # Preview categorization without moving tasks in Asana
-./asana-tasks-sorter -dry-run
+./asana-tasks-sorter --config default --dry-run
 
 # Specify a custom timeout for API operations (default is 30 seconds)
-./asana-tasks-sorter -timeout 60s
+./asana-tasks-sorter --config default --timeout 60s
 ```
+
+Note: The `--config` parameter is required. Use `--config default` to use the built-in defaults, or specify a path to your custom configuration file.
 
 ### Configuration File
 
@@ -174,7 +179,7 @@ The development process followed a "minimal viable slice" approach, starting wit
 
 - Add filters for completed tasks
 - Support multiple workspaces
-- Add colorful output
+- ✅ Add colorful output
 - Implement interactive mode with task completion
 
 ## 🚢 Releasing
