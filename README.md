@@ -50,6 +50,9 @@ Run the tool:
 Options:
 
 ```bash
+# Show detailed help information
+./asana-tasks-sorter -help
+
 # Use a custom section configuration file
 ./asana-tasks-sorter -config path/to/your/config.json
 
