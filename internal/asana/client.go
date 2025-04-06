@@ -336,12 +336,6 @@ func (c *Client) GetTasksInSection(sectionGID string) ([]Task, error) {
 		return nil, err
 	}
 
-	// Debug log for assignee section information
-	for _, task := range tasks {
-		fmt.Printf("DEBUG: Task '%s' has assignee_section.gid='%s', assignee_section.name='%s'\n", 
-			task.Name, task.AssigneeSection.GID, task.AssigneeSection.Name)
-	}
-
 	return tasks, nil
 }
 
@@ -367,12 +361,6 @@ func (c *Client) GetTasksFromUserTaskList(userTaskListGID string) ([]Task, error
 	var tasks []Task
 	if err := json.Unmarshal(container.Data, &tasks); err != nil {
 		return nil, err
-	}
-
-	// Debug log for assignee section information
-	for _, task := range tasks {
-		fmt.Printf("DEBUG: Task '%s' has assignee_section.gid='%s', assignee_section.name='%s'\n", 
-			task.Name, task.AssigneeSection.GID, task.AssigneeSection.Name)
 	}
 
 	return tasks, nil
