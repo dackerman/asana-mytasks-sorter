@@ -27,18 +27,28 @@ func main() {
 	// Create Asana client
 	client := asana.NewClient(accessToken)
 
-	// Load section config
-	config := asana.DefaultSectionConfig()
-	if *configFile != "" {
-		loadedConfig, err := loadSectionConfig(*configFile)
-		if err == nil {
-			config = loadedConfig
-		} else {
-			fmt.Printf("Error loading section config: %v\nUsing default configuration\n", err)
-		}
-	}
+	// Load configuration
+	config := loadConfiguration(*configFile)
 
+	// Run the main logic
 	run(client, config, *dryRun)
+}
+
+// loadConfiguration loads the configuration from a file or returns defaults
+func loadConfiguration(configFile string) asana.SectionConfig {
+	config := asana.DefaultSectionConfig()
+	
+	if configFile == "" {
+		return config
+	}
+	
+	loadedConfig, err := loadSectionConfig(configFile)
+	if err == nil {
+		return loadedConfig
+	}
+	
+	fmt.Printf("Error loading section config: %v\nUsing default configuration\n", err)
+	return config
 }
 
 // loadSectionConfig loads the section configuration from a JSON file
@@ -74,6 +84,29 @@ type TaskMove struct {
 	SectionName string
 }
 
+// categorizeTasks sorts a list of tasks into categories based on due date
+func categorizeTasks(tasks []asana.Task, now time.Time) map[asana.TaskCategory][]asana.Task {
+	categorized := make(map[asana.TaskCategory][]asana.Task)
+	
+	for _, task := range tasks {
+		category := task.GetTaskCategory(now)
+		categorized[category] = append(categorized[category], task)
+	}
+	
+	return categorized
+}
+
+// getCategoryToSectionMap creates a mapping from task categories to section names based on config
+func getCategoryToSectionMap(config asana.SectionConfig) map[asana.TaskCategory]string {
+	return map[asana.TaskCategory]string{
+		asana.Overdue:     config.Overdue,
+		asana.DueToday:    config.DueToday,
+		asana.DueThisWeek: config.DueThisWeek,
+		asana.DueLater:    config.DueLater,
+		asana.NoDate:      config.NoDate,
+	}
+}
+
 // calculateTaskMoves determines which tasks need to be moved to which sections without side effects
 // It is a pure function that doesn't perform any side effects
 func calculateTaskMoves(tasks []asana.Task, config asana.SectionConfig, 
@@ -82,13 +115,7 @@ func calculateTaskMoves(tasks []asana.Task, config asana.SectionConfig,
 	var moves []TaskMove
 	
 	// Map categories to section names
-	categoryToSection := map[asana.TaskCategory]string{
-		asana.Overdue:     config.Overdue,
-		asana.DueToday:    config.DueToday,
-		asana.DueThisWeek: config.DueThisWeek,
-		asana.DueLater:    config.DueLater,
-		asana.NoDate:      config.NoDate,
-	}
+	categoryToSection := getCategoryToSectionMap(config)
 	
 	for _, task := range tasks {
 		// Get current section name
@@ -132,25 +159,28 @@ func calculateTaskMoves(tasks []asana.Task, config asana.SectionConfig,
 	return moves
 }
 
+// fatalError prints an error message and exits the program
+func fatalError(format string, args ...interface{}) {
+	fmt.Printf(format, args...)
+	os.Exit(1)
+}
+
 func run(client *asana.Client, config asana.SectionConfig, dryRun bool) {
 	// Get current user
 	user, err := client.GetCurrentUser()
 	if err != nil {
-		fmt.Printf("Error getting current user: %v\n", err)
-		os.Exit(1)
+		fatalError("Error getting current user: %v\n", err)
 	}
 	fmt.Printf("Logged in as: %s\n", user.Name)
 
 	// Get workspaces
 	workspaces, err := client.GetWorkspaces()
 	if err != nil {
-		fmt.Printf("Error getting workspaces: %v\n", err)
-		os.Exit(1)
+		fatalError("Error getting workspaces: %v\n", err)
 	}
 
 	if len(workspaces) == 0 {
-		fmt.Println("No workspaces found for user")
-		os.Exit(1)
+		fatalError("No workspaces found for user\n")
 	}
 
 	// Use first workspace
@@ -160,15 +190,13 @@ func run(client *asana.Client, config asana.SectionConfig, dryRun bool) {
 	// Get user's "My Tasks" list
 	userTaskList, err := client.GetUserTaskList(user.GID, workspace.GID)
 	if err != nil {
-		fmt.Printf("Error getting user task list: %v\n", err)
-		os.Exit(1)
+		fatalError("Error getting user task list: %v\n", err)
 	}
 
 	// Get sections in My Tasks list (using the project/sections API)
 	sections, err := client.GetSectionsForProject(userTaskList.GID)
 	if err != nil {
-		fmt.Printf("Error getting sections: %v\n", err)
-		os.Exit(1)
+		fatalError("Error getting sections: %v\n", err)
 	}
 
 	// Create a map to store section names to their GIDs
@@ -178,27 +206,8 @@ func run(client *asana.Client, config asana.SectionConfig, dryRun bool) {
 	}
 
 	// Ensure required sections exist, create them if needed
-	requiredSections := []string{
-		config.Overdue,
-		config.DueToday,
-		config.DueThisWeek,
-		config.DueLater,
-		config.NoDate,
-	}
-
 	if !dryRun {
-		for _, sectionName := range requiredSections {
-			if _, exists := sectionNameToGID[sectionName]; !exists {
-				fmt.Printf("Creating section: %s\n", sectionName)
-				newSection, err := client.CreateSection(userTaskList.GID, sectionName)
-				if err != nil {
-					fmt.Printf("Error creating section '%s': %v\n", sectionName, err)
-					continue
-				}
-				sectionNameToGID[newSection.Name] = newSection.GID
-				sections = append(sections, *newSection)
-			}
-		}
+		ensureRequiredSections(client, userTaskList.GID, config, &sections, sectionNameToGID)
 	}
 
 	// Create a map of ignored sections for quick lookup
@@ -207,76 +216,97 @@ func run(client *asana.Client, config asana.SectionConfig, dryRun bool) {
 		ignoredSections[sectionName] = true
 	}
 
-	// Create a map of section IDs to names for easy lookup
-	sectionGIDToName := make(map[string]string)
-	for _, section := range sections {
-		sectionGIDToName[section.GID] = section.Name
-	}
-
 	// Collect all tasks from user task list at once
 	fmt.Println("Fetching all tasks from My Tasks list...")
 	allTasks, err := client.GetTasksFromUserTaskList(userTaskList.GID)
 	if err != nil {
-		fmt.Printf("Error getting tasks from user task list: %v\n", err)
-		os.Exit(1)
+		fatalError("Error getting tasks from user task list: %v\n", err)
 	}
 
-	// Filter out tasks from ignored sections
-	filteredTasks := []asana.Task{}
+	// Print tasks we're skipping due to being in ignored sections
 	for _, task := range allTasks {
-		// Skip tasks in ignored sections
 		sectionName := task.AssigneeSection.Name
 		if ignoredSections[sectionName] {
 			fmt.Printf("Skipping task in ignored section: %s (in section '%s')\n",
 				task.Name, sectionName)
-			continue
 		}
-		filteredTasks = append(filteredTasks, task)
 	}
-	allTasks = filteredTasks
 
-	// Sort tasks into categories based on due date for display purposes
-	categorizedTasks := make(map[asana.TaskCategory][]asana.Task)
+	// Get the current time once for consistency across all operations
 	now := time.Now()
 
-	for _, task := range allTasks {
-		category := task.GetTaskCategory(now)
-		categorizedTasks[category] = append(categorizedTasks[category], task)
-	}
+	// Sort tasks into categories based on due date for display purposes
+	categorizedTasks := categorizeTasks(allTasks, now)
 
 	// Map categories to section names (used for display)
-	categoryToSection := map[asana.TaskCategory]string{
-		asana.Overdue:     config.Overdue,
-		asana.DueToday:    config.DueToday,
-		asana.DueThisWeek: config.DueThisWeek,
-		asana.DueLater:    config.DueLater,
-		asana.NoDate:      config.NoDate,
-	}
+	categoryToSection := getCategoryToSectionMap(config)
 
-	// Calculate task moves without side effects, passing in the current time
+	// Calculate task moves without side effects
 	taskMoves := calculateTaskMoves(allTasks, config, sectionNameToGID, ignoredSections, now)
 	
 	// Execute the moves if not in dry run mode
-	if !dryRun && len(taskMoves) > 0 {
-		fmt.Println("\nMoving tasks to appropriate sections...")
-		tasksMoved := 0
-		
-		for _, move := range taskMoves {
-			fmt.Printf("Moving task '%s' to section: %s\n", move.Task.Name, move.SectionName)
-			err := client.MoveTaskToSection(move.SectionGID, move.Task.GID)
-			if err != nil {
-				fmt.Printf("Error moving task '%s': %v\n", move.Task.Name, err)
-			} else {
-				tasksMoved++
-			}
-		}
-		
-		fmt.Printf("\nMoved %d tasks to their appropriate sections\n", tasksMoved)
-	} else if !dryRun {
-		fmt.Println("\nNo tasks need to be moved")
+	if !dryRun {
+		executeTaskMoves(client, taskMoves)
 	}
 
-	// Print tasks by category in a concise format
+	// Display tasks by category
+	displayTasks(categorizedTasks, categoryToSection, dryRun)
+}
+
+// executeTaskMoves performs the actual moves in Asana
+func executeTaskMoves(client *asana.Client, taskMoves []TaskMove) {
+	if len(taskMoves) == 0 {
+		fmt.Println("\nNo tasks need to be moved")
+		return
+	}
+	
+	fmt.Println("\nMoving tasks to appropriate sections...")
+	tasksMoved := 0
+	
+	for _, move := range taskMoves {
+		fmt.Printf("Moving task '%s' to section: %s\n", move.Task.Name, move.SectionName)
+		err := client.MoveTaskToSection(move.SectionGID, move.Task.GID)
+		if err != nil {
+			fmt.Printf("Error moving task '%s': %v\n", move.Task.Name, err)
+		} else {
+			tasksMoved++
+		}
+	}
+	
+	fmt.Printf("\nMoved %d tasks to their appropriate sections\n", tasksMoved)
+}
+
+// ensureRequiredSections creates any missing required sections
+func ensureRequiredSections(client *asana.Client, projectGID string, config asana.SectionConfig,
+	sections *[]asana.Section, sectionNameToGID map[string]string) {
+	
+	// List of required sections from config
+	requiredSections := []string{
+		config.Overdue,
+		config.DueToday,
+		config.DueThisWeek,
+		config.DueLater,
+		config.NoDate,
+	}
+	
+	for _, sectionName := range requiredSections {
+		if _, exists := sectionNameToGID[sectionName]; !exists {
+			fmt.Printf("Creating section: %s\n", sectionName)
+			newSection, err := client.CreateSection(projectGID, sectionName)
+			if err != nil {
+				fmt.Printf("Error creating section '%s': %v\n", sectionName, err)
+				continue
+			}
+			sectionNameToGID[newSection.Name] = newSection.GID
+			*sections = append(*sections, *newSection)
+		}
+	}
+}
+
+// displayTasks prints out tasks organized by category
+func displayTasks(categorizedTasks map[asana.TaskCategory][]asana.Task, 
+	categoryToSection map[asana.TaskCategory]string, dryRun bool) {
+	
 	fmt.Println("\nMy Asana Tasks:")
 	fmt.Println("==============")
 
