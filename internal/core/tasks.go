@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/dackerman/asana-tasks-sorter/internal/asana"
+	"github.com/dackerman/asana-tasks-sorter/internal/ui"
 )
 
 // TaskMove represents a task that should be moved to a new section
@@ -105,7 +106,7 @@ func EnsureRequiredSections(ctx context.Context, client asana.API, projectGID st
 
 	for _, sectionName := range requiredSections {
 		if _, exists := sectionNameToGID[sectionName]; !exists {
-			fmt.Printf("Creating section: %s\n", sectionName)
+			fmt.Printf("%s %s\n", ui.Operation("Creating section:"), ui.SectionName(sectionName))
 			newSection, err := client.CreateSection(ctx, projectGID, sectionName)
 			if err != nil {
 				return fmt.Errorf("error creating section '%s': %w", sectionName, err)
@@ -120,27 +121,34 @@ func EnsureRequiredSections(ctx context.Context, client asana.API, projectGID st
 // ExecuteTaskMoves performs the actual moves in Asana
 func ExecuteTaskMoves(ctx context.Context, client asana.API, taskMoves []TaskMove) error {
 	if len(taskMoves) == 0 {
-		fmt.Println("\nNo tasks need to be moved")
+		fmt.Println("\n" + ui.Info("No tasks need to be moved"))
 		return nil
 	}
 
-	fmt.Println("\nMoving tasks to appropriate sections...")
+	fmt.Println("\n" + ui.Header("Moving tasks to appropriate sections..."))
 	errors := 0
 
 	for _, move := range taskMoves {
-		fmt.Printf("Moving task '%s' to section: %s\n", move.Task.Name, move.SectionName)
+		fmt.Printf("%s %s %s %s\n", 
+			ui.Operation("Moving task"),
+			ui.TaskName("'"+move.Task.Name+"'"), 
+			ui.Subtle("to section:"),
+			ui.SectionName(move.SectionName))
 		err := client.MoveTaskToSection(ctx, move.SectionGID, move.Task.GID)
 		if err != nil {
-			fmt.Printf("Error moving task '%s': %v\n", move.Task.Name, err)
+			fmt.Printf("%s %s: %v\n", 
+				ui.Error("Error moving task"),
+				ui.TaskName("'"+move.Task.Name+"'"), 
+				err)
 			errors++
 		}
 	}
 
 	if errors > 0 {
-		return fmt.Errorf("%d errors occurred while moving tasks", errors)
+		return fmt.Errorf("%s", ui.Error(fmt.Sprintf("%d errors occurred while moving tasks", errors)))
 	}
 
-	fmt.Printf("\nMoved %d tasks to their appropriate sections\n", len(taskMoves))
+	fmt.Printf("\n%s\n", ui.Success(fmt.Sprintf("Moved %d tasks to their appropriate sections", len(taskMoves))))
 	return nil
 }
 
@@ -169,7 +177,7 @@ func OrganizeTasks(ctx context.Context, client asana.API, config SectionConfig, 
 	if err != nil {
 		return nil, fmt.Errorf("error getting current user: %w", err)
 	}
-	fmt.Printf("Logged in as: %s\n", user.Name)
+	fmt.Printf("%s %s\n", ui.Info("Logged in as:"), ui.Important(user.Name))
 
 	// Get workspaces
 	workspaces, err := client.GetWorkspaces(ctx)
@@ -183,7 +191,7 @@ func OrganizeTasks(ctx context.Context, client asana.API, config SectionConfig, 
 
 	// Use first workspace
 	workspace := workspaces[0]
-	fmt.Printf("Using workspace: %s\n", workspace.Name)
+	fmt.Printf("%s %s\n", ui.Info("Using workspace:"), ui.Important(workspace.Name))
 
 	// Get user's "My Tasks" list
 	userTaskList, err := client.GetUserTaskList(ctx, user.GID, workspace.GID)
@@ -211,7 +219,7 @@ func OrganizeTasks(ctx context.Context, client asana.API, config SectionConfig, 
 	ignoredSections := CreateIgnoredSectionsMap(config.IgnoredSections)
 
 	// Collect all tasks from user task list at once
-	fmt.Println("Fetching all tasks from My Tasks list...")
+	fmt.Println(ui.Header("Fetching all tasks from My Tasks list..."))
 	allTasks, err := client.GetTasksFromUserTaskList(ctx, userTaskList.GID)
 	if err != nil {
 		return nil, fmt.Errorf("error getting tasks from user task list: %w", err)
@@ -221,8 +229,12 @@ func OrganizeTasks(ctx context.Context, client asana.API, config SectionConfig, 
 	for _, task := range allTasks {
 		sectionName := task.AssigneeSection.Name
 		if ignoredSections[sectionName] {
-			fmt.Printf("Skipping task in ignored section: %s (in section '%s')\n",
-				task.Name, sectionName)
+			fmt.Printf("%s %s %s %s%s\n",
+				ui.Subtle("Skipping task in ignored section:"),
+				ui.TaskName(task.Name), 
+				ui.Subtle("(in section"),
+				ui.SectionName(" '"+sectionName+"'"),
+				ui.Subtle(")"))
 		}
 	}
 
