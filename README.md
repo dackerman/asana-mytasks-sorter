@@ -6,7 +6,7 @@
 
 Asana Tasks Sorter is a sleek, Go-powered CLI tool that pulls your Asana tasks and displays them in a clean, organized format. It's like having your Asana dashboard in your terminal - perfect for productivity-obsessed developers who want to check their tasks without leaving their command line.
 
-Vibe-coded from scratch with ✨good vibes only✨, this tool connects to the Asana API to fetch your tasks, respecting their project sections, due dates, and notes - all in a minimalist display that sparks joy.
+Vibe-coded from scratch with ✨good vibes only✨, this tool connects to the Asana API to fetch your tasks, respecting their project sections and due dates - all in a minimalist display that sparks joy.
 
 ## ✨ Features
 
@@ -15,7 +15,6 @@ Vibe-coded from scratch with ✨good vibes only✨, this tool connects to the As
 - **Customizable Categories**: Customize category names through a simple JSON configuration file
 - **Section Management**: Automatically creates required sections if they don't exist
 - **Due Dates**: Shows due dates alongside each task
-- **Detailed Notes**: Includes task notes with proper indentation
 - **Workspace Selection**: Connects to your Asana workspace
 - **Zero Dependencies**: Just Go standard library - no external dependencies required!
 - **Test Coverage**: Includes snapshot testing for reliable, offline testing

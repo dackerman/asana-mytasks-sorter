@@ -97,7 +97,6 @@ func (d Date) IsZero() bool {
 type Task struct {
 	GID       string    `json:"gid"`
 	Name      string    `json:"name"`
-	Notes     string    `json:"notes,omitempty"`
 	Completed bool      `json:"completed"`
 	DueOn     Date      `json:"due_on,omitempty"`
 	DueAt     time.Time `json:"due_at,omitempty"`
@@ -311,7 +310,7 @@ func (c *Client) GetTasksInSection(sectionGID string) ([]Task, error) {
 
 	queryParams := map[string]string{
 		"completed_since": "now", // Only get incomplete tasks
-		"opt_fields":      "name,notes,completed,due_on,due_at",
+		"opt_fields":      "name,completed,due_on,due_at",
 	}
 
 	data, err := c.makeRequest("GET", path, queryParams)
@@ -338,7 +337,7 @@ func (c *Client) GetTasksFromUserTaskList(userTaskListGID string) ([]Task, error
 
 	queryParams := map[string]string{
 		"completed_since": "now",
-		"opt_fields":      "name,notes,completed,due_on,due_at",
+		"opt_fields":      "name,completed,due_on,due_at",
 	}
 
 	data, err := c.makeRequest("GET", path, queryParams)
@@ -362,56 +361,56 @@ func (c *Client) GetTasksFromUserTaskList(userTaskListGID string) ([]Task, error
 // CreateSection creates a new section in a project
 func (c *Client) CreateSection(projectGID, name string) (*Section, error) {
 	path := fmt.Sprintf("/projects/%s/sections", projectGID)
-	
+
 	// Create request body
 	requestBody := map[string]interface{}{
 		"data": map[string]string{
 			"name": name,
 		},
 	}
-	
+
 	// Convert to JSON
 	bodyBytes, err := json.Marshal(requestBody)
 	if err != nil {
 		return nil, fmt.Errorf("error creating request body: %v", err)
 	}
-	
+
 	// Make the request
 	data, err := c.makePostRequest(path, bodyBytes)
 	if err != nil {
 		return nil, err
 	}
-	
+
 	var container DataContainer
 	if err := json.Unmarshal(data, &container); err != nil {
 		return nil, err
 	}
-	
+
 	var section Section
 	if err := json.Unmarshal(container.Data, &section); err != nil {
 		return nil, err
 	}
-	
+
 	return &section, nil
 }
 
 // MoveTaskToSection moves a task to a section
 func (c *Client) MoveTaskToSection(sectionGID, taskGID string) error {
 	path := fmt.Sprintf("/sections/%s/addTask", sectionGID)
-	
+
 	// Create request body
 	requestBody := map[string]interface{}{
 		"data": map[string]string{
 			"task": taskGID,
 		},
 	}
-	
+
 	// Convert to JSON
 	bodyBytes, err := json.Marshal(requestBody)
 	if err != nil {
 		return fmt.Errorf("error creating request body: %v", err)
 	}
-	
+
 	// Make the request
 	_, err = c.makePostRequest(path, bodyBytes)
 	return err
@@ -421,35 +420,35 @@ func (c *Client) MoveTaskToSection(sectionGID, taskGID string) error {
 func (c *Client) makePostRequest(path string, body []byte) ([]byte, error) {
 	// Build URL
 	reqURL := c.BaseURL + path
-	
+
 	// Create request
 	req, err := http.NewRequest("POST", reqURL, bytes.NewBuffer(body))
 	if err != nil {
 		return nil, err
 	}
-	
+
 	// Add headers
 	req.Header.Add("Authorization", "Bearer "+c.Token)
 	req.Header.Add("Accept", "application/json")
 	req.Header.Add("Content-Type", "application/json")
-	
+
 	// Execute request
 	resp, err := c.Client.Do(req)
 	if err != nil {
 		return nil, err
 	}
 	defer resp.Body.Close()
-	
+
 	// Read response body
 	bodyBytes, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, err
 	}
-	
+
 	// Check status code
 	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusCreated {
 		return nil, fmt.Errorf("API request failed with status %d: %s", resp.StatusCode, string(bodyBytes))
 	}
-	
+
 	return bodyBytes, nil
 }

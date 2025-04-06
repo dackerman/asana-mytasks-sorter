@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"strings"
 	"time"
 
 	"github.com/dackerman/asana-tasks-sorter/internal/asana"
@@ -235,16 +234,6 @@ func run(client *asana.Client, config asana.SectionConfig, dryRun bool) {
 					taskLine = fmt.Sprintf("%s (%s)", taskLine, task.DueOn.Format("2006-01-02"))
 				}
 
-				// Add a short preview of notes if present
-				if task.Notes != "" {
-					// Take first line of notes, truncate if too long
-					firstLine := strings.Split(task.Notes, "\n")[0]
-					if len(firstLine) > 40 {
-						firstLine = firstLine[:37] + "..."
-					}
-					taskLine = fmt.Sprintf("%s - %s", taskLine, firstLine)
-				}
-				
 				fmt.Println(taskLine)
 			}
 

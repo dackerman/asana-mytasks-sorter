@@ -1,7 +1,7 @@
 {
   "request": {
     "method": "GET",
-    "url": "https://app.asana.com/api/1.0/sections/1201985911880275/tasks?opt_fields=name,notes,completed,due_on,due_at\u0026completed_since=now",
+    "url": "https://app.asana.com/api/1.0/sections/1201985911880275/tasks?opt_fields=name,completed,due_on,due_at\u0026completed_since=now",
     "headers": {
       "Accept": "application/json"
     },
