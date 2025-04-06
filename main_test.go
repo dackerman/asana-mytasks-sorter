@@ -41,5 +41,9 @@ func TestMainWithSnapshots(t *testing.T) {
 		BaseURL: asana.BaseURL,
 	}
 
-	run(client)
+	// Use default configuration and dry run mode for tests
+	config := asana.DefaultSectionConfig()
+	dryRun := true
+	
+	run(client, config, dryRun)
 }
