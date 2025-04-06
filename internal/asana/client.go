@@ -2,6 +2,7 @@ package asana
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -12,8 +13,16 @@ import (
 
 // API constants
 const (
-	BaseURL = "https://app.asana.com/api/1.0"
+	BaseURL        = "https://app.asana.com/api/1.0"
 	DefaultTimeout = 10 * time.Second
+	
+	// Query parameter names
+	QueryCompletedSince = "completed_since"
+	QueryOptFields      = "opt_fields"
+	QueryWorkspace      = "workspace"
+	
+	// Standard field sets
+	TaskFields = "name,completed,due_on,due_at,assignee_section,assignee_section.name"
 )
 
 // Client handles API requests to the Asana API
@@ -38,6 +47,7 @@ type Request struct {
 	Path        string
 	QueryParams map[string]string
 	Body        interface{}
+	Context     context.Context
 }
 
 // Response structs
@@ -172,34 +182,20 @@ func (t *Task) GetTaskCategory(now time.Time) TaskCategory {
 	return DueLater
 }
 
-// SectionConfig defines the mapping of task categories to section names
-type SectionConfig struct {
-	Overdue         string   `json:"overdue"`
-	DueToday        string   `json:"due_today"`
-	DueThisWeek     string   `json:"due_this_week"`
-	DueLater        string   `json:"due_later"`
-	NoDate          string   `json:"no_date"`
-	IgnoredSections []string `json:"ignored_sections,omitempty"`
-}
-
-// DefaultSectionConfig returns the default section configuration
-func DefaultSectionConfig() SectionConfig {
-	return SectionConfig{
-		Overdue:         "Overdue",
-		DueToday:        "Due today",
-		DueThisWeek:     "Due within the next 7 days",
-		DueLater:        "Due later",
-		NoDate:          "Recently assigned",
-		IgnoredSections: []string{},
-	}
-}
+// This section has been moved to internal/core/config.go
 
 // executeRequest is a generic helper method for making HTTP requests to the Asana API
 func (c *Client) executeRequest(req Request) ([]byte, error) {
+	// Use background context if none provided
+	ctx := req.Context
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	
 	// Build URL with query parameters
 	reqURL, err := url.Parse(c.BaseURL + req.Path)
 	if err != nil {
-		return nil, fmt.Errorf("invalid URL: %v", err)
+		return nil, fmt.Errorf("invalid URL: %w", err)
 	}
 	
 	// Add query parameters if any
@@ -216,15 +212,15 @@ func (c *Client) executeRequest(req Request) ([]byte, error) {
 	if req.Body != nil {
 		bodyBytes, err := json.Marshal(req.Body)
 		if err != nil {
-			return nil, fmt.Errorf("error creating request body: %v", err)
+			return nil, fmt.Errorf("error creating request body: %w", err)
 		}
 		bodyReader = bytes.NewReader(bodyBytes)
 	}
 	
-	// Create HTTP request
-	httpReq, err := http.NewRequest(req.Method, reqURL.String(), bodyReader)
+	// Create HTTP request with context
+	httpReq, err := http.NewRequestWithContext(ctx, req.Method, reqURL.String(), bodyReader)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to create HTTP request: %w", err)
 	}
 	
 	// Add common headers
@@ -239,14 +235,14 @@ func (c *Client) executeRequest(req Request) ([]byte, error) {
 	// Execute request
 	resp, err := c.Client.Do(httpReq)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("HTTP request failed: %w", err)
 	}
 	defer resp.Body.Close()
 	
 	// Read response body
 	bodyBytes, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to read response body: %w", err)
 	}
 	
 	// Check status code
@@ -261,169 +257,181 @@ func (c *Client) executeRequest(req Request) ([]byte, error) {
 func unmarshalResponse(data []byte, target interface{}) error {
 	var container DataContainer
 	if err := json.Unmarshal(data, &container); err != nil {
-		return err
+		return fmt.Errorf("failed to unmarshal API response container: %w", err)
 	}
 	
 	if err := json.Unmarshal(container.Data, target); err != nil {
-		return err
+		return fmt.Errorf("failed to unmarshal API response data: %w", err)
 	}
 	
 	return nil
 }
 
 // GetCurrentUser retrieves the current user's information
-func (c *Client) GetCurrentUser() (*User, error) {
+func (c *Client) GetCurrentUser(ctx context.Context) (*User, error) {
 	data, err := c.executeRequest(Request{
-		Method: http.MethodGet,
-		Path:   "/users/me",
+		Method:  http.MethodGet,
+		Path:    "/users/me",
+		Context: ctx,
 	})
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to get current user: %w", err)
 	}
 	
 	var user User
 	if err := unmarshalResponse(data, &user); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to parse user data: %w", err)
 	}
 	
 	return &user, nil
 }
 
 // GetWorkspaces retrieves all workspaces the user has access to
-func (c *Client) GetWorkspaces() ([]Workspace, error) {
+func (c *Client) GetWorkspaces(ctx context.Context) ([]Workspace, error) {
 	data, err := c.executeRequest(Request{
-		Method: http.MethodGet,
-		Path:   "/workspaces",
+		Method:  http.MethodGet,
+		Path:    "/workspaces",
+		Context: ctx,
 	})
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to get workspaces: %w", err)
 	}
 	
 	var workspaces []Workspace
 	if err := unmarshalResponse(data, &workspaces); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to parse workspaces: %w", err)
 	}
 	
 	return workspaces, nil
 }
 
 // GetUserTaskList retrieves a user's task list for a specific workspace
-func (c *Client) GetUserTaskList(userGID, workspaceGID string) (*UserTaskList, error) {
+func (c *Client) GetUserTaskList(ctx context.Context, userGID, workspaceGID string) (*UserTaskList, error) {
 	data, err := c.executeRequest(Request{
-		Method: http.MethodGet,
-		Path:   fmt.Sprintf("/users/%s/user_task_list", userGID),
+		Method:  http.MethodGet,
+		Path:    fmt.Sprintf("/users/%s/user_task_list", userGID),
 		QueryParams: map[string]string{
-			"workspace": workspaceGID,
+			QueryWorkspace: workspaceGID,
 		},
+		Context: ctx,
 	})
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to get user task list: %w", err)
 	}
 	
 	var userTaskList UserTaskList
 	if err := unmarshalResponse(data, &userTaskList); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to parse user task list: %w", err)
 	}
 	
 	return &userTaskList, nil
 }
 
 // GetSectionsForProject retrieves all sections in a project
-func (c *Client) GetSectionsForProject(projectGID string) ([]Section, error) {
+func (c *Client) GetSectionsForProject(ctx context.Context, projectGID string) ([]Section, error) {
 	data, err := c.executeRequest(Request{
-		Method: http.MethodGet,
-		Path:   fmt.Sprintf("/projects/%s/sections", projectGID),
+		Method:  http.MethodGet,
+		Path:    fmt.Sprintf("/projects/%s/sections", projectGID),
+		Context: ctx,
 	})
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to get sections for project: %w", err)
 	}
 	
 	var sections []Section
 	if err := unmarshalResponse(data, &sections); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to parse sections: %w", err)
 	}
 	
 	return sections, nil
 }
 
 // GetTasksFromUserTaskList retrieves all incomplete tasks in a user's task list
-func (c *Client) GetTasksFromUserTaskList(userTaskListGID string) ([]Task, error) {
+func (c *Client) GetTasksFromUserTaskList(ctx context.Context, userTaskListGID string) ([]Task, error) {
 	data, err := c.executeRequest(Request{
-		Method: http.MethodGet,
-		Path:   fmt.Sprintf("/user_task_lists/%s/tasks", userTaskListGID),
+		Method:  http.MethodGet,
+		Path:    fmt.Sprintf("/user_task_lists/%s/tasks", userTaskListGID),
 		QueryParams: map[string]string{
-			"completed_since": "now",
-			"opt_fields":      "name,completed,due_on,due_at,assignee_section,assignee_section.name",
+			QueryCompletedSince: "now",
+			QueryOptFields:      TaskFields,
 		},
+		Context: ctx,
 	})
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to get tasks from user task list: %w", err)
 	}
 	
 	var tasks []Task
 	if err := unmarshalResponse(data, &tasks); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to parse tasks: %w", err)
 	}
 	
 	return tasks, nil
 }
 
 // GetTasksInSection retrieves all incomplete tasks in a section
-func (c *Client) GetTasksInSection(sectionGID string) ([]Task, error) {
+func (c *Client) GetTasksInSection(ctx context.Context, sectionGID string) ([]Task, error) {
 	data, err := c.executeRequest(Request{
-		Method: http.MethodGet,
-		Path:   fmt.Sprintf("/sections/%s/tasks", sectionGID),
+		Method:  http.MethodGet,
+		Path:    fmt.Sprintf("/sections/%s/tasks", sectionGID),
 		QueryParams: map[string]string{
-			"completed_since": "now",
-			"opt_fields":      "name,completed,due_on,due_at,assignee_section,assignee_section.name",
+			QueryCompletedSince: "now",
+			QueryOptFields:      TaskFields,
 		},
+		Context: ctx,
 	})
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to get tasks in section: %w", err)
 	}
 	
 	var tasks []Task
 	if err := unmarshalResponse(data, &tasks); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to parse tasks: %w", err)
 	}
 	
 	return tasks, nil
 }
 
 // CreateSection creates a new section in a project
-func (c *Client) CreateSection(projectGID, name string) (*Section, error) {
+func (c *Client) CreateSection(ctx context.Context, projectGID, name string) (*Section, error) {
 	data, err := c.executeRequest(Request{
-		Method: http.MethodPost,
-		Path:   fmt.Sprintf("/projects/%s/sections", projectGID),
-		Body:   map[string]interface{}{
+		Method:  http.MethodPost,
+		Path:    fmt.Sprintf("/projects/%s/sections", projectGID),
+		Body:    map[string]interface{}{
 			"data": map[string]string{
 				"name": name,
 			},
 		},
+		Context: ctx,
 	})
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to create section: %w", err)
 	}
 	
 	var section Section
 	if err := unmarshalResponse(data, &section); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to parse created section: %w", err)
 	}
 	
 	return &section, nil
 }
 
 // MoveTaskToSection moves a task to a section
-func (c *Client) MoveTaskToSection(sectionGID, taskGID string) error {
+func (c *Client) MoveTaskToSection(ctx context.Context, sectionGID, taskGID string) error {
 	_, err := c.executeRequest(Request{
-		Method: http.MethodPost,
-		Path:   fmt.Sprintf("/sections/%s/addTask", sectionGID),
-		Body:   map[string]interface{}{
+		Method:  http.MethodPost,
+		Path:    fmt.Sprintf("/sections/%s/addTask", sectionGID),
+		Body:    map[string]interface{}{
 			"data": map[string]string{
 				"task": taskGID,
 			},
 		},
+		Context: ctx,
 	})
 	
-	return err
+	if err != nil {
+		return fmt.Errorf("failed to move task to section: %w", err)
+	}
+	
+	return nil
 }

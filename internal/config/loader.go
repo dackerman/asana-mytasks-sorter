@@ -6,12 +6,12 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/dackerman/asana-tasks-sorter/internal/asana"
+	"github.com/dackerman/asana-tasks-sorter/internal/core"
 )
 
 // LoadConfiguration loads the configuration from a file or returns defaults
-func LoadConfiguration(configFile string) asana.SectionConfig {
-	config := asana.DefaultSectionConfig()
+func LoadConfiguration(configFile string) core.SectionConfig {
+	config := core.DefaultSectionConfig()
 	
 	if configFile == "" {
 		return config
@@ -27,12 +27,12 @@ func LoadConfiguration(configFile string) asana.SectionConfig {
 }
 
 // loadSectionConfig loads the section configuration from a JSON file
-func loadSectionConfig(configPath string) (asana.SectionConfig, error) {
+func loadSectionConfig(configPath string) (core.SectionConfig, error) {
 	// Handle relative paths
 	if !filepath.IsAbs(configPath) {
 		absPath, err := filepath.Abs(configPath)
 		if err != nil {
-			return asana.SectionConfig{}, fmt.Errorf("failed to resolve absolute path: %v", err)
+			return core.SectionConfig{}, fmt.Errorf("failed to resolve absolute path: %w", err)
 		}
 		configPath = absPath
 	}
@@ -40,13 +40,13 @@ func loadSectionConfig(configPath string) (asana.SectionConfig, error) {
 	// Read config file
 	configData, err := os.ReadFile(configPath)
 	if err != nil {
-		return asana.SectionConfig{}, fmt.Errorf("failed to read config file: %v", err)
+		return core.SectionConfig{}, fmt.Errorf("failed to read config file: %w", err)
 	}
 
 	// Parse JSON
-	var config asana.SectionConfig
+	var config core.SectionConfig
 	if err := json.Unmarshal(configData, &config); err != nil {
-		return asana.SectionConfig{}, fmt.Errorf("failed to parse config file: %v", err)
+		return core.SectionConfig{}, fmt.Errorf("failed to parse config file: %w", err)
 	}
 
 	return config, nil

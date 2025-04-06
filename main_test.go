@@ -1,9 +1,11 @@
 package main
 
 import (
+	"context"
 	"net/http"
 	"os"
 	"testing"
+	"time"
 
 	"github.com/dackerman/asana-tasks-sorter/internal/asana"
 	"github.com/dackerman/asana-tasks-sorter/internal/core"
@@ -43,11 +45,15 @@ func TestMainWithSnapshots(t *testing.T) {
 	}
 
 	// Use default configuration and dry run mode for tests
-	config := asana.DefaultSectionConfig()
+	config := core.DefaultSectionConfig()
 	dryRun := false
 
+	// Create context with timeout
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
 	// Run the core business logic
-	_, err := core.OrganizeTasks(client, config, dryRun)
+	_, err := core.OrganizeTasks(ctx, client, config, dryRun)
 	if err != nil {
 		t.Fatalf("Error in OrganizeTasks: %v", err)
 	}

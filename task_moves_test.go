@@ -38,7 +38,7 @@ func TestCalculateTaskMoves(t *testing.T) {
 	testCases := []struct {
 		name            string
 		tasks           []asana.Task
-		config          asana.SectionConfig
+		config          core.SectionConfig
 		sectionNameToGID map[string]string
 		ignoredSections map[string]bool
 		expectedMoves   []core.TaskMove
@@ -52,7 +52,7 @@ func TestCalculateTaskMoves(t *testing.T) {
 				createTask("Task 4", "2023-05-15", "Due later"), // More than a week, already correct
 				createTask("Task 5", "", "Recently assigned"),   // No date, already in correct section
 			},
-			config: asana.SectionConfig{
+			config: core.SectionConfig{
 				Overdue:     "Overdue",
 				DueToday:    "Due today",
 				DueThisWeek: "Due within the next 7 days",
@@ -78,7 +78,7 @@ func TestCalculateTaskMoves(t *testing.T) {
 				createTask("Task 4", "2023-05-15", "Due within the next 7 days"), // Far future, should move to Due later
 				createTask("Task 5", "", "Due today"),           // No date, should move to Recently assigned
 			},
-			config: asana.SectionConfig{
+			config: core.SectionConfig{
 				Overdue:     "Overdue",
 				DueToday:    "Due today",
 				DueThisWeek: "Due within the next 7 days",
@@ -127,7 +127,7 @@ func TestCalculateTaskMoves(t *testing.T) {
 				createTask("Task 1", "2023-04-10", "Doing Now"),  // Past date, but in ignored section
 				createTask("Task 2", "2023-05-15", "Waiting For"), // Future date, but in ignored section
 			},
-			config: asana.SectionConfig{
+			config: core.SectionConfig{
 				Overdue:     "Overdue",
 				DueToday:    "Due today",
 				DueThisWeek: "Due within the next 7 days",
@@ -153,7 +153,7 @@ func TestCalculateTaskMoves(t *testing.T) {
 				createTask("Task 1", "2023-04-15", "Custom Section"), // Today's date, but Due today is ignored
 				createTask("Task 2", "2023-04-10", "Another Section"), // Past date, but Overdue is ignored
 			},
-			config: asana.SectionConfig{
+			config: core.SectionConfig{
 				Overdue:     "Overdue",
 				DueToday:    "Due today",
 				DueThisWeek: "Due within the next 7 days",
@@ -179,7 +179,7 @@ func TestCalculateTaskMoves(t *testing.T) {
 				createTask("Task 1", "2023-04-15", "Custom Section"), // Today's date
 				createTask("Task 2", "2023-04-10", "Another Section"), // Past date
 			},
-			config: asana.SectionConfig{
+			config: core.SectionConfig{
 				Overdue:     "Overdue",
 				DueToday:    "Due today",
 				DueThisWeek: "Due within the next 7 days",
@@ -204,7 +204,7 @@ func TestCalculateTaskMoves(t *testing.T) {
 				createTask("Task 2", "2023-04-22", "Wrong Section"), // 7 days from reference (should be this week)
 				createTask("Task 3", "2023-04-23", "Wrong Section"), // 8 days from reference (should be due later)
 			},
-			config: asana.SectionConfig{
+			config: core.SectionConfig{
 				Overdue:     "Overdue",
 				DueToday:    "Due today",
 				DueThisWeek: "Due within the next 7 days",
@@ -311,7 +311,7 @@ func TestTaskMoveStruct(t *testing.T) {
 func TestDateCalculations(t *testing.T) {
 	// Setup
 	referenceTime := time.Date(2023, 4, 15, 12, 0, 0, 0, time.UTC) // Saturday
-	config := asana.DefaultSectionConfig()
+	config := core.DefaultSectionConfig()
 	sectionNameToGID := map[string]string{
 		"Overdue":                    "section_Overdue",
 		"Due today":                  "section_Due today",
