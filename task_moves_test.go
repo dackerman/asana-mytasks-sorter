@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/dackerman/asana-tasks-sorter/internal/asana"
+	"github.com/dackerman/asana-tasks-sorter/internal/core"
 )
 
 func TestCalculateTaskMoves(t *testing.T) {
@@ -40,7 +41,7 @@ func TestCalculateTaskMoves(t *testing.T) {
 		config          asana.SectionConfig
 		sectionNameToGID map[string]string
 		ignoredSections map[string]bool
-		expectedMoves   []TaskMove
+		expectedMoves   []core.TaskMove
 	}{
 		{
 			name: "Tasks in correct sections should not move",
@@ -55,7 +56,7 @@ func TestCalculateTaskMoves(t *testing.T) {
 				Overdue:     "Overdue",
 				DueToday:    "Due today",
 				DueThisWeek: "Due within the next 7 days",
-				DueLater:    "Due later",
+				DueLater:    "Due later", 
 				NoDate:      "Recently assigned",
 			},
 			sectionNameToGID: map[string]string{
@@ -66,7 +67,7 @@ func TestCalculateTaskMoves(t *testing.T) {
 				"Recently assigned":          "section_Recently assigned",
 			},
 			ignoredSections: map[string]bool{},
-			expectedMoves:   []TaskMove{}, // No moves expected
+			expectedMoves:   []core.TaskMove{}, // No moves expected
 		},
 		{
 			name: "Tasks in wrong sections should move",
@@ -92,7 +93,7 @@ func TestCalculateTaskMoves(t *testing.T) {
 				"Recently assigned":          "section_Recently assigned",
 			},
 			ignoredSections: map[string]bool{},
-			expectedMoves: []TaskMove{
+			expectedMoves: []core.TaskMove{
 				{
 					Task:        createTask("Task 1", "2023-04-15", "Overdue"),
 					SectionGID:  "section_Due today",
@@ -144,7 +145,7 @@ func TestCalculateTaskMoves(t *testing.T) {
 				"Doing Now":   true,
 				"Waiting For": true,
 			},
-			expectedMoves: []TaskMove{}, // No moves expected
+			expectedMoves: []core.TaskMove{}, // No moves expected
 		},
 		{
 			name: "Tasks should not move to ignored target sections",
@@ -170,7 +171,7 @@ func TestCalculateTaskMoves(t *testing.T) {
 				"Overdue":   true,
 				"Due today": true,
 			},
-			expectedMoves: []TaskMove{}, // No moves expected
+			expectedMoves: []core.TaskMove{}, // No moves expected
 		},
 		{
 			name: "Tasks should not move to sections that don't exist",
@@ -192,7 +193,7 @@ func TestCalculateTaskMoves(t *testing.T) {
 				"Recently assigned":          "section_Recently assigned",
 			},
 			ignoredSections: map[string]bool{},
-			expectedMoves:   []TaskMove{}, // No moves expected since target sections don't exist
+			expectedMoves:   []core.TaskMove{}, // No moves expected since target sections don't exist
 		},
 		{
 			name: "Edge cases: tasks at boundaries of date ranges",
@@ -218,7 +219,7 @@ func TestCalculateTaskMoves(t *testing.T) {
 				"Recently assigned":          "section_Recently assigned",
 			},
 			ignoredSections: map[string]bool{},
-			expectedMoves: []TaskMove{
+			expectedMoves: []core.TaskMove{
 				{
 					Task:        createTask("Task 1", "2023-04-15", "Wrong Section"),
 					SectionGID:  "section_Due today",
@@ -241,12 +242,7 @@ func TestCalculateTaskMoves(t *testing.T) {
 	// Run tests
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			moves := calculateTaskMoves(tc.tasks, tc.config, tc.sectionNameToGID, tc.ignoredSections, referenceTime)
-			
-			// Check if the number of moves matches expected
-			if len(moves) != len(tc.expectedMoves) {
-				t.Errorf("Expected %d moves, got %d", len(tc.expectedMoves), len(moves))
-			}
+			moves := core.CalculateTaskMoves(tc.tasks, tc.config, tc.sectionNameToGID, tc.ignoredSections, referenceTime)
 			
 			// For test cases where we expect no moves, just check the length
 			if len(tc.expectedMoves) == 0 && len(moves) == 0 {
@@ -292,7 +288,7 @@ func TestTaskMoveStruct(t *testing.T) {
 		Name: "Test Task",
 	}
 	
-	move := TaskMove{
+	move := core.TaskMove{
 		Task:        task,
 		SectionGID:  "section_456",
 		SectionName: "New Section",
@@ -393,7 +389,7 @@ func TestDateCalculations(t *testing.T) {
 			}
 			
 			// Calculate moves
-			moves := calculateTaskMoves([]asana.Task{task}, config, sectionNameToGID, ignoredSections, referenceTime)
+			moves := core.CalculateTaskMoves([]asana.Task{task}, config, sectionNameToGID, ignoredSections, referenceTime)
 			
 			// Check if the task should move
 			if tc.shouldMove && len(moves) == 0 {

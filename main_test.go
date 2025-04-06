@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/dackerman/asana-tasks-sorter/internal/asana"
+	"github.com/dackerman/asana-tasks-sorter/internal/core"
 	testing_util "github.com/dackerman/asana-tasks-sorter/internal/testing"
 )
 
@@ -45,5 +46,9 @@ func TestMainWithSnapshots(t *testing.T) {
 	config := asana.DefaultSectionConfig()
 	dryRun := false
 
-	run(client, config, dryRun)
+	// Run the core business logic
+	_, err := core.OrganizeTasks(client, config, dryRun)
+	if err != nil {
+		t.Fatalf("Error in OrganizeTasks: %v", err)
+	}
 }
