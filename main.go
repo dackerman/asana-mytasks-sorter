@@ -55,8 +55,55 @@ Examples:
 func main() {
 	// Set custom usage text
 	flag.Usage = func() {
-		fmt.Println(usageText)
-		fmt.Println("Flags:")
+		fmt.Println(ui.Header("Asana Tasks Sorter - A CLI tool to organize your Asana tasks."))
+		fmt.Println()
+		
+		description := `This program connects to your Asana account, fetches your tasks, and 
+organizes them into sections based on their due dates. It can optionally
+move the tasks to the appropriate sections in Asana.`
+		fmt.Println(description)
+		fmt.Println()
+		
+		fmt.Println(ui.SectionTitle("Usage:"))
+		fmt.Println("  asana-tasks-sorter [flags]")
+		fmt.Println()
+		
+		fmt.Println(ui.SectionTitle("Configuration:"))
+		configText := `  Create a JSON file with the following structure to customize section names:
+  {
+    "overdue": "Overdue",
+    "due_today": "Due today",
+    "due_this_week": "Due within the next 7 days",
+    "due_later": "Due later",
+    "no_date": "Recently assigned",
+    "ignored_sections": ["Doing Now", "Waiting For"]
+  }`
+		fmt.Println(configText)
+		fmt.Println()
+		
+		fmt.Println(ui.SectionTitle("Authentication:"))
+		authText := `  Export your Asana personal access token as an environment variable:
+  export ASANA_ACCESS_TOKEN="your_asana_personal_access_token"
+  Get your token from https://app.asana.com/0/developer-console`
+		fmt.Println(authText)
+		fmt.Println()
+		
+		fmt.Println(ui.SectionTitle("Examples:"))
+		examplesText := `  # Run with default settings
+  asana-tasks-sorter
+
+  # Use a custom configuration file
+  asana-tasks-sorter -config path/to/your/config.json
+
+  # Preview changes without moving tasks
+  asana-tasks-sorter -dry-run
+
+  # Set a custom timeout for API operations
+  asana-tasks-sorter -timeout 60s`
+		fmt.Println(examplesText)
+		fmt.Println()
+		
+		fmt.Println(ui.SectionTitle("Flags:"))
 		flag.PrintDefaults()
 	}
 
