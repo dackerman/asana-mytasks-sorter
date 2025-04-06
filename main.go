@@ -67,6 +67,71 @@ func loadSectionConfig(configPath string) (asana.SectionConfig, error) {
 	return config, nil
 }
 
+// TaskMove represents a task that should be moved to a new section
+type TaskMove struct {
+	Task        asana.Task
+	SectionGID  string
+	SectionName string
+}
+
+// calculateTaskMoves determines which tasks need to be moved to which sections without side effects
+// It is a pure function that doesn't perform any side effects
+func calculateTaskMoves(tasks []asana.Task, config asana.SectionConfig, 
+	sectionNameToGID map[string]string, ignoredSections map[string]bool, now time.Time) []TaskMove {
+	
+	var moves []TaskMove
+	
+	// Map categories to section names
+	categoryToSection := map[asana.TaskCategory]string{
+		asana.Overdue:     config.Overdue,
+		asana.DueToday:    config.DueToday,
+		asana.DueThisWeek: config.DueThisWeek,
+		asana.DueLater:    config.DueLater,
+		asana.NoDate:      config.NoDate,
+	}
+	
+	for _, task := range tasks {
+		// Get current section name
+		currentSectionName := task.AssigneeSection.Name
+		
+		// Skip if task is in an ignored section
+		if ignoredSections[currentSectionName] {
+			continue
+		}
+		
+		// Calculate which category the task belongs in
+		category := task.GetTaskCategory(now)
+		
+		// Get the target section name for this category
+		targetSectionName := categoryToSection[category]
+		
+		// Skip if target section is in the ignored list
+		if ignoredSections[targetSectionName] {
+			continue
+		}
+		
+		// Skip if task is already in the correct section
+		if currentSectionName == targetSectionName {
+			continue
+		}
+		
+		// Get the section GID for the target section
+		sectionGID, exists := sectionNameToGID[targetSectionName]
+		if !exists {
+			continue
+		}
+		
+		// Add the move to our list
+		moves = append(moves, TaskMove{
+			Task:        task,
+			SectionGID:  sectionGID,
+			SectionName: targetSectionName,
+		})
+	}
+	
+	return moves
+}
+
 func run(client *asana.Client, config asana.SectionConfig, dryRun bool) {
 	// Get current user
 	user, err := client.GetCurrentUser()
@@ -170,7 +235,7 @@ func run(client *asana.Client, config asana.SectionConfig, dryRun bool) {
 	}
 	allTasks = filteredTasks
 
-	// Sort tasks into categories based on due date
+	// Sort tasks into categories based on due date for display purposes
 	categorizedTasks := make(map[asana.TaskCategory][]asana.Task)
 	now := time.Now()
 
@@ -179,7 +244,7 @@ func run(client *asana.Client, config asana.SectionConfig, dryRun bool) {
 		categorizedTasks[category] = append(categorizedTasks[category], task)
 	}
 
-	// Map categories to section names
+	// Map categories to section names (used for display)
 	categoryToSection := map[asana.TaskCategory]string{
 		asana.Overdue:     config.Overdue,
 		asana.DueToday:    config.DueToday,
@@ -188,51 +253,27 @@ func run(client *asana.Client, config asana.SectionConfig, dryRun bool) {
 		asana.NoDate:      config.NoDate,
 	}
 
-	// Move tasks to appropriate sections
-	tasksMoved := 0
-	if !dryRun {
+	// Calculate task moves without side effects, passing in the current time
+	taskMoves := calculateTaskMoves(allTasks, config, sectionNameToGID, ignoredSections, now)
+	
+	// Execute the moves if not in dry run mode
+	if !dryRun && len(taskMoves) > 0 {
 		fmt.Println("\nMoving tasks to appropriate sections...")
-		for category, sectionName := range categoryToSection {
-			// Skip if target section is in the ignored list
-			if ignoredSections[sectionName] {
-				fmt.Printf("Skipping moving tasks to ignored section: %s\n", sectionName)
-				continue
-			}
-
-			sectionGID, exists := sectionNameToGID[sectionName]
-			if !exists {
-				fmt.Printf("Error: Section '%s' not found, skipping tasks\n", sectionName)
-				continue
-			}
-
-			tasks := categorizedTasks[category]
-			for _, task := range tasks {
-				// Get current section name directly from the task
-				currentSectionName := task.AssigneeSection.Name
-
-				// Skip if task is already in the correct section
-				if currentSectionName == sectionName {
-					fmt.Printf("Task '%s' already in correct section: %s\n", task.Name, sectionName)
-					continue
-				}
-
-				// Skip if task is currently in an ignored section
-				if ignoredSections[currentSectionName] {
-					fmt.Printf("Task '%s' is in ignored section '%s', skipping\n", task.Name, currentSectionName)
-					continue
-				}
-
-				// Move task to the new section
-				fmt.Printf("Moving task '%s' to section: %s\n", task.Name, sectionName)
-				err := client.MoveTaskToSection(sectionGID, task.GID)
-				if err != nil {
-					fmt.Printf("Error moving task '%s': %v\n", task.Name, err)
-				} else {
-					tasksMoved++
-				}
+		tasksMoved := 0
+		
+		for _, move := range taskMoves {
+			fmt.Printf("Moving task '%s' to section: %s\n", move.Task.Name, move.SectionName)
+			err := client.MoveTaskToSection(move.SectionGID, move.Task.GID)
+			if err != nil {
+				fmt.Printf("Error moving task '%s': %v\n", move.Task.Name, err)
+			} else {
+				tasksMoved++
 			}
 		}
+		
 		fmt.Printf("\nMoved %d tasks to their appropriate sections\n", tasksMoved)
+	} else if !dryRun {
+		fmt.Println("\nNo tasks need to be moved")
 	}
 
 	// Print tasks by category in a concise format
