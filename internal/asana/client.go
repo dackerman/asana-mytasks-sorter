@@ -94,12 +94,18 @@ func (d Date) IsZero() bool {
 	return time.Time(d).IsZero()
 }
 
+type AssigneeSection struct {
+	GID  string `json:"gid"`
+	Name string `json:"name"`
+}
+
 type Task struct {
-	GID       string    `json:"gid"`
-	Name      string    `json:"name"`
-	Completed bool      `json:"completed"`
-	DueOn     Date      `json:"due_on,omitempty"`
-	DueAt     time.Time `json:"due_at,omitempty"`
+	GID             string          `json:"gid"`
+	Name            string          `json:"name"`
+	Completed       bool            `json:"completed"`
+	DueOn           Date            `json:"due_on,omitempty"`
+	DueAt           time.Time       `json:"due_at,omitempty"`
+	AssigneeSection AssigneeSection `json:"assignee_section,omitempty"`
 }
 
 // TaskCategory represents a category for tasks based on due date
@@ -312,7 +318,7 @@ func (c *Client) GetTasksInSection(sectionGID string) ([]Task, error) {
 
 	queryParams := map[string]string{
 		"completed_since": "now", // Only get incomplete tasks
-		"opt_fields":      "name,completed,due_on,due_at",
+		"opt_fields":      "name,completed,due_on,due_at,assignee_section,assignee_section.name",
 	}
 
 	data, err := c.makeRequest("GET", path, queryParams)
@@ -328,6 +334,12 @@ func (c *Client) GetTasksInSection(sectionGID string) ([]Task, error) {
 	var tasks []Task
 	if err := json.Unmarshal(container.Data, &tasks); err != nil {
 		return nil, err
+	}
+
+	// Debug log for assignee section information
+	for _, task := range tasks {
+		fmt.Printf("DEBUG: Task '%s' has assignee_section.gid='%s', assignee_section.name='%s'\n", 
+			task.Name, task.AssigneeSection.GID, task.AssigneeSection.Name)
 	}
 
 	return tasks, nil
@@ -339,7 +351,7 @@ func (c *Client) GetTasksFromUserTaskList(userTaskListGID string) ([]Task, error
 
 	queryParams := map[string]string{
 		"completed_since": "now",
-		"opt_fields":      "name,completed,due_on,due_at",
+		"opt_fields":      "name,completed,due_on,due_at,assignee_section,assignee_section.name",
 	}
 
 	data, err := c.makeRequest("GET", path, queryParams)
@@ -355,6 +367,12 @@ func (c *Client) GetTasksFromUserTaskList(userTaskListGID string) ([]Task, error
 	var tasks []Task
 	if err := json.Unmarshal(container.Data, &tasks); err != nil {
 		return nil, err
+	}
+
+	// Debug log for assignee section information
+	for _, task := range tasks {
+		fmt.Printf("DEBUG: Task '%s' has assignee_section.gid='%s', assignee_section.name='%s'\n", 
+			task.Name, task.AssigneeSection.GID, task.AssigneeSection.Name)
 	}
 
 	return tasks, nil
