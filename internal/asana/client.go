@@ -6,11 +6,15 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"time"
 )
 
-// BaseURL is the base URL for the Asana API
-const BaseURL = "https://app.asana.com/api/1.0"
+// API constants
+const (
+	BaseURL = "https://app.asana.com/api/1.0"
+	DefaultTimeout = 10 * time.Second
+)
 
 // Client handles API requests to the Asana API
 type Client struct {
@@ -19,11 +23,29 @@ type Client struct {
 	BaseURL string
 }
 
+// NewClient creates a new Asana API client
+func NewClient(token string) *Client {
+	return &Client{
+		Client:  &http.Client{Timeout: DefaultTimeout},
+		Token:   token,
+		BaseURL: BaseURL,
+	}
+}
+
+// Request represents an API request
+type Request struct {
+	Method      string
+	Path        string
+	QueryParams map[string]string
+	Body        interface{}
+}
+
 // Response structs
 type DataContainer struct {
 	Data json.RawMessage `json:"data"`
 }
 
+// Model types
 type User struct {
 	GID  string `json:"gid"`
 	Name string `json:"name"`
@@ -39,11 +61,25 @@ type Section struct {
 	Name string `json:"name"`
 }
 
+type AssigneeSection struct {
+	GID  string `json:"gid"`
+	Name string `json:"name"`
+}
+
 type UserTaskList struct {
 	GID       string    `json:"gid"`
 	Name      string    `json:"name"`
 	Owner     User      `json:"owner"`
 	Workspace Workspace `json:"workspace"`
+}
+
+type Task struct {
+	GID             string          `json:"gid"`
+	Name            string          `json:"name"`
+	Completed       bool            `json:"completed"`
+	DueOn           Date            `json:"due_on,omitempty"`
+	DueAt           time.Time       `json:"due_at,omitempty"`
+	AssigneeSection AssigneeSection `json:"assignee_section,omitempty"`
 }
 
 // Date is a custom type to handle ISO 8601 date strings
@@ -94,20 +130,6 @@ func (d Date) IsZero() bool {
 	return time.Time(d).IsZero()
 }
 
-type AssigneeSection struct {
-	GID  string `json:"gid"`
-	Name string `json:"name"`
-}
-
-type Task struct {
-	GID             string          `json:"gid"`
-	Name            string          `json:"name"`
-	Completed       bool            `json:"completed"`
-	DueOn           Date            `json:"due_on,omitempty"`
-	DueAt           time.Time       `json:"due_at,omitempty"`
-	AssigneeSection AssigneeSection `json:"assignee_section,omitempty"`
-}
-
 // TaskCategory represents a category for tasks based on due date
 type TaskCategory int
 
@@ -139,15 +161,15 @@ func (t *Task) GetTaskCategory(now time.Time) TaskCategory {
 	// Compare dates
 	if dueDateNormalized.Before(nowDate) {
 		return Overdue
-	} else {
-		// For future dates, calculate days difference
-		days := int(dueDateNormalized.Sub(nowDate).Hours() / 24)
-		if days <= 7 {
-			return DueThisWeek
-		} else {
-			return DueLater
-		}
-	}
+	} 
+	
+	// For future dates, calculate days difference
+	days := int(dueDateNormalized.Sub(nowDate).Hours() / 24)
+	if days <= 7 {
+		return DueThisWeek
+	} 
+	
+	return DueLater
 }
 
 // SectionConfig defines the mapping of task categories to section names
@@ -172,291 +194,236 @@ func DefaultSectionConfig() SectionConfig {
 	}
 }
 
-// NewClient creates a new Asana API client
-func NewClient(token string) *Client {
-	return &Client{
-		Client:  &http.Client{Timeout: 10 * time.Second},
-		Token:   token,
-		BaseURL: BaseURL,
-	}
-}
-
-// makeRequest is a helper method to make HTTP requests to the Asana API
-func (c *Client) makeRequest(method, path string, queryParams map[string]string) ([]byte, error) {
+// executeRequest is a generic helper method for making HTTP requests to the Asana API
+func (c *Client) executeRequest(req Request) ([]byte, error) {
 	// Build URL with query parameters
-	reqURL := c.BaseURL + path
-	if queryParams != nil && len(queryParams) > 0 {
-		reqURL += "?"
-		for key, value := range queryParams {
-			reqURL += key + "=" + value + "&"
-		}
-		// Remove trailing "&"
-		reqURL = reqURL[:len(reqURL)-1]
+	reqURL, err := url.Parse(c.BaseURL + req.Path)
+	if err != nil {
+		return nil, fmt.Errorf("invalid URL: %v", err)
 	}
-
-	// Create request
-	req, err := http.NewRequest(method, reqURL, nil)
+	
+	// Add query parameters if any
+	if len(req.QueryParams) > 0 {
+		q := reqURL.Query()
+		for key, value := range req.QueryParams {
+			q.Add(key, value)
+		}
+		reqURL.RawQuery = q.Encode()
+	}
+	
+	// Create request body if any
+	var bodyReader io.Reader
+	if req.Body != nil {
+		bodyBytes, err := json.Marshal(req.Body)
+		if err != nil {
+			return nil, fmt.Errorf("error creating request body: %v", err)
+		}
+		bodyReader = bytes.NewReader(bodyBytes)
+	}
+	
+	// Create HTTP request
+	httpReq, err := http.NewRequest(req.Method, reqURL.String(), bodyReader)
 	if err != nil {
 		return nil, err
 	}
-
-	// Add headers
-	req.Header.Add("Authorization", "Bearer "+c.Token)
-	req.Header.Add("Accept", "application/json")
-
+	
+	// Add common headers
+	httpReq.Header.Add("Authorization", "Bearer "+c.Token)
+	httpReq.Header.Add("Accept", "application/json")
+	
+	// Add content-type for requests with bodies
+	if req.Body != nil {
+		httpReq.Header.Add("Content-Type", "application/json")
+	}
+	
 	// Execute request
-	resp, err := c.Client.Do(req)
+	resp, err := c.Client.Do(httpReq)
 	if err != nil {
 		return nil, err
 	}
 	defer resp.Body.Close()
-
+	
 	// Read response body
 	bodyBytes, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, err
 	}
-
+	
 	// Check status code
-	if resp.StatusCode != http.StatusOK {
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		return nil, fmt.Errorf("API request failed with status %d: %s", resp.StatusCode, string(bodyBytes))
 	}
-
+	
 	return bodyBytes, nil
+}
+
+// unmarshalResponse is a helper function to unmarshal the API response
+func unmarshalResponse(data []byte, target interface{}) error {
+	var container DataContainer
+	if err := json.Unmarshal(data, &container); err != nil {
+		return err
+	}
+	
+	if err := json.Unmarshal(container.Data, target); err != nil {
+		return err
+	}
+	
+	return nil
 }
 
 // GetCurrentUser retrieves the current user's information
 func (c *Client) GetCurrentUser() (*User, error) {
-	data, err := c.makeRequest("GET", "/users/me", nil)
+	data, err := c.executeRequest(Request{
+		Method: http.MethodGet,
+		Path:   "/users/me",
+	})
 	if err != nil {
 		return nil, err
 	}
-
-	var container DataContainer
-	if err := json.Unmarshal(data, &container); err != nil {
-		return nil, err
-	}
-
+	
 	var user User
-	if err := json.Unmarshal(container.Data, &user); err != nil {
+	if err := unmarshalResponse(data, &user); err != nil {
 		return nil, err
 	}
-
+	
 	return &user, nil
-}
-
-// GetUserTaskList retrieves a user's task list for a specific workspace
-func (c *Client) GetUserTaskList(userGID, workspaceGID string) (*UserTaskList, error) {
-	path := fmt.Sprintf("/users/%s/user_task_list", userGID)
-	queryParams := map[string]string{
-		"workspace": workspaceGID,
-	}
-
-	data, err := c.makeRequest("GET", path, queryParams)
-	if err != nil {
-		return nil, err
-	}
-
-	var container DataContainer
-	if err := json.Unmarshal(data, &container); err != nil {
-		return nil, err
-	}
-
-	var userTaskList UserTaskList
-	if err := json.Unmarshal(container.Data, &userTaskList); err != nil {
-		return nil, err
-	}
-
-	return &userTaskList, nil
 }
 
 // GetWorkspaces retrieves all workspaces the user has access to
 func (c *Client) GetWorkspaces() ([]Workspace, error) {
-	data, err := c.makeRequest("GET", "/workspaces", nil)
+	data, err := c.executeRequest(Request{
+		Method: http.MethodGet,
+		Path:   "/workspaces",
+	})
 	if err != nil {
 		return nil, err
 	}
-
-	var container DataContainer
-	if err := json.Unmarshal(data, &container); err != nil {
-		return nil, err
-	}
-
+	
 	var workspaces []Workspace
-	if err := json.Unmarshal(container.Data, &workspaces); err != nil {
+	if err := unmarshalResponse(data, &workspaces); err != nil {
 		return nil, err
 	}
-
+	
 	return workspaces, nil
+}
+
+// GetUserTaskList retrieves a user's task list for a specific workspace
+func (c *Client) GetUserTaskList(userGID, workspaceGID string) (*UserTaskList, error) {
+	data, err := c.executeRequest(Request{
+		Method: http.MethodGet,
+		Path:   fmt.Sprintf("/users/%s/user_task_list", userGID),
+		QueryParams: map[string]string{
+			"workspace": workspaceGID,
+		},
+	})
+	if err != nil {
+		return nil, err
+	}
+	
+	var userTaskList UserTaskList
+	if err := unmarshalResponse(data, &userTaskList); err != nil {
+		return nil, err
+	}
+	
+	return &userTaskList, nil
 }
 
 // GetSectionsForProject retrieves all sections in a project
 func (c *Client) GetSectionsForProject(projectGID string) ([]Section, error) {
-	path := fmt.Sprintf("/projects/%s/sections", projectGID)
-
-	data, err := c.makeRequest("GET", path, nil)
+	data, err := c.executeRequest(Request{
+		Method: http.MethodGet,
+		Path:   fmt.Sprintf("/projects/%s/sections", projectGID),
+	})
 	if err != nil {
 		return nil, err
 	}
-
-	var container DataContainer
-	if err := json.Unmarshal(data, &container); err != nil {
-		return nil, err
-	}
-
+	
 	var sections []Section
-	if err := json.Unmarshal(container.Data, &sections); err != nil {
+	if err := unmarshalResponse(data, &sections); err != nil {
 		return nil, err
 	}
-
+	
 	return sections, nil
-}
-
-// GetTasksInSection retrieves all incomplete tasks in a section
-func (c *Client) GetTasksInSection(sectionGID string) ([]Task, error) {
-	path := fmt.Sprintf("/sections/%s/tasks", sectionGID)
-
-	queryParams := map[string]string{
-		"completed_since": "now", // Only get incomplete tasks
-		"opt_fields":      "name,completed,due_on,due_at,assignee_section,assignee_section.name",
-	}
-
-	data, err := c.makeRequest("GET", path, queryParams)
-	if err != nil {
-		return nil, err
-	}
-
-	var container DataContainer
-	if err := json.Unmarshal(data, &container); err != nil {
-		return nil, err
-	}
-
-	var tasks []Task
-	if err := json.Unmarshal(container.Data, &tasks); err != nil {
-		return nil, err
-	}
-
-	return tasks, nil
 }
 
 // GetTasksFromUserTaskList retrieves all incomplete tasks in a user's task list
 func (c *Client) GetTasksFromUserTaskList(userTaskListGID string) ([]Task, error) {
-	path := fmt.Sprintf("/user_task_lists/%s/tasks", userTaskListGID)
-
-	queryParams := map[string]string{
-		"completed_since": "now",
-		"opt_fields":      "name,completed,due_on,due_at,assignee_section,assignee_section.name",
-	}
-
-	data, err := c.makeRequest("GET", path, queryParams)
+	data, err := c.executeRequest(Request{
+		Method: http.MethodGet,
+		Path:   fmt.Sprintf("/user_task_lists/%s/tasks", userTaskListGID),
+		QueryParams: map[string]string{
+			"completed_since": "now",
+			"opt_fields":      "name,completed,due_on,due_at,assignee_section,assignee_section.name",
+		},
+	})
 	if err != nil {
 		return nil, err
 	}
-
-	var container DataContainer
-	if err := json.Unmarshal(data, &container); err != nil {
-		return nil, err
-	}
-
+	
 	var tasks []Task
-	if err := json.Unmarshal(container.Data, &tasks); err != nil {
+	if err := unmarshalResponse(data, &tasks); err != nil {
 		return nil, err
 	}
+	
+	return tasks, nil
+}
 
+// GetTasksInSection retrieves all incomplete tasks in a section
+func (c *Client) GetTasksInSection(sectionGID string) ([]Task, error) {
+	data, err := c.executeRequest(Request{
+		Method: http.MethodGet,
+		Path:   fmt.Sprintf("/sections/%s/tasks", sectionGID),
+		QueryParams: map[string]string{
+			"completed_since": "now",
+			"opt_fields":      "name,completed,due_on,due_at,assignee_section,assignee_section.name",
+		},
+	})
+	if err != nil {
+		return nil, err
+	}
+	
+	var tasks []Task
+	if err := unmarshalResponse(data, &tasks); err != nil {
+		return nil, err
+	}
+	
 	return tasks, nil
 }
 
 // CreateSection creates a new section in a project
 func (c *Client) CreateSection(projectGID, name string) (*Section, error) {
-	path := fmt.Sprintf("/projects/%s/sections", projectGID)
-
-	// Create request body
-	requestBody := map[string]interface{}{
-		"data": map[string]string{
-			"name": name,
+	data, err := c.executeRequest(Request{
+		Method: http.MethodPost,
+		Path:   fmt.Sprintf("/projects/%s/sections", projectGID),
+		Body:   map[string]interface{}{
+			"data": map[string]string{
+				"name": name,
+			},
 		},
-	}
-
-	// Convert to JSON
-	bodyBytes, err := json.Marshal(requestBody)
-	if err != nil {
-		return nil, fmt.Errorf("error creating request body: %v", err)
-	}
-
-	// Make the request
-	data, err := c.makePostRequest(path, bodyBytes)
+	})
 	if err != nil {
 		return nil, err
 	}
-
-	var container DataContainer
-	if err := json.Unmarshal(data, &container); err != nil {
-		return nil, err
-	}
-
+	
 	var section Section
-	if err := json.Unmarshal(container.Data, &section); err != nil {
+	if err := unmarshalResponse(data, &section); err != nil {
 		return nil, err
 	}
-
+	
 	return &section, nil
 }
 
 // MoveTaskToSection moves a task to a section
 func (c *Client) MoveTaskToSection(sectionGID, taskGID string) error {
-	path := fmt.Sprintf("/sections/%s/addTask", sectionGID)
-
-	// Create request body
-	requestBody := map[string]interface{}{
-		"data": map[string]string{
-			"task": taskGID,
+	_, err := c.executeRequest(Request{
+		Method: http.MethodPost,
+		Path:   fmt.Sprintf("/sections/%s/addTask", sectionGID),
+		Body:   map[string]interface{}{
+			"data": map[string]string{
+				"task": taskGID,
+			},
 		},
-	}
-
-	// Convert to JSON
-	bodyBytes, err := json.Marshal(requestBody)
-	if err != nil {
-		return fmt.Errorf("error creating request body: %v", err)
-	}
-
-	// Make the request
-	_, err = c.makePostRequest(path, bodyBytes)
+	})
+	
 	return err
-}
-
-// makePostRequest is a helper method to make HTTP POST requests to the Asana API
-func (c *Client) makePostRequest(path string, body []byte) ([]byte, error) {
-	// Build URL
-	reqURL := c.BaseURL + path
-
-	// Create request
-	req, err := http.NewRequest("POST", reqURL, bytes.NewBuffer(body))
-	if err != nil {
-		return nil, err
-	}
-
-	// Add headers
-	req.Header.Add("Authorization", "Bearer "+c.Token)
-	req.Header.Add("Accept", "application/json")
-	req.Header.Add("Content-Type", "application/json")
-
-	// Execute request
-	resp, err := c.Client.Do(req)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-
-	// Read response body
-	bodyBytes, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, err
-	}
-
-	// Check status code
-	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusCreated {
-		return nil, fmt.Errorf("API request failed with status %d: %s", resp.StatusCode, string(bodyBytes))
-	}
-
-	return bodyBytes, nil
 }
