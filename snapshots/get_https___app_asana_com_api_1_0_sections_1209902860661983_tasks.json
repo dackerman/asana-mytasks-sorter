@@ -1,7 +1,7 @@
 {
   "request": {
     "method": "GET",
-    "url": "https://app.asana.com/api/1.0/sections/1202808117491090/tasks?completed_since=now\u0026opt_fields=name,notes,completed,due_on,due_at",
+    "url": "https://app.asana.com/api/1.0/sections/1209902860661983/tasks?completed_since=now\u0026opt_fields=name,notes,completed,due_on,due_at",
     "headers": {
       "Accept": "application/json"
     },
@@ -11,26 +11,26 @@
     "status_code": 200,
     "headers": {
       "Asana-Change": "name=cross_workspace_deprecation;info=https://forum.asana.com/t/change-get-projects-get-users-and-get-tags-will-require-a-workspace-or-team/1031581,name=new_user_task_lists;info=https://forum.asana.com/t/update-on-our-planned-api-changes-to-user-task-lists-a-k-a-my-tasks/103828,name=new_goal_memberships;info=https://forum.asana.com/t/launched-team-sharing-for-goals/378601;affected=true,name=cross_workspace_deprecation;info=https://forum.asana.com/t/change-get-projects-get-users-and-get-tags-will-require-a-workspace-or-team/1031581,name=new_user_task_lists;info=https://forum.asana.com/t/update-on-our-planned-api-changes-to-user-task-lists-a-k-a-my-tasks/103828,name=new_goal_memberships;info=https://forum.asana.com/t/launched-team-sharing-for-goals/378601;affected=true",
-      "Content-Length": "11",
+      "Content-Length": "136",
       "Content-Security-Policy": "report-uri https://app.asana.com/-/csp_report?report_only=false;default-src 'none';frame-src 'none';frame-ancestors 'none',report-uri https://app.asana.com/-/csp_report?report_only=false;default-src 'none';frame-src 'none';frame-ancestors 'none'",
       "Content-Type": "application/json; charset=UTF-8",
-      "Date": "Sun, 06 Apr 2025 01:21:04 GMT",
+      "Date": "Sun, 06 Apr 2025 01:21:05 GMT",
       "Referrer-Policy": "strict-origin-when-cross-origin",
       "Server": "istio-envoy",
-      "Server-Timing": "cdn-upstream-layer;desc=\"REC\",cdn-upstream-dns;dur=0,cdn-upstream-connect;dur=0,cdn-upstream-fbl;dur=85,cdn-cache-miss,cdn-pop;desc=\"BOS50-P3\",cdn-rid;desc=\"ocJLoKpf94hs2TKFlzgz4UhpOo1sVC4sI3dd74gWJycupy5eIXc42A==\",cdn-downstream-fbl;dur=117",
+      "Server-Timing": "cdn-upstream-layer;desc=\"REC\",cdn-upstream-dns;dur=0,cdn-upstream-connect;dur=0,cdn-upstream-fbl;dur=62,cdn-cache-miss,cdn-pop;desc=\"BOS50-P3\",cdn-rid;desc=\"M1a5TCj8wBJXkUqR0Kl70OjMrwyru78A5yEASCeJgm7zKc0IAe2GEA==\",cdn-downstream-fbl;dur=111",
       "Strict-Transport-Security": "max-age=31536000; includeSubDomains; preload",
       "Via": "1.1 5bf4d747be36bbd75379552d7669c798.cloudfront.net (CloudFront)",
-      "X-Amz-Cf-Id": "ocJLoKpf94hs2TKFlzgz4UhpOo1sVC4sI3dd74gWJycupy5eIXc42A==",
+      "X-Amz-Cf-Id": "M1a5TCj8wBJXkUqR0Kl70OjMrwyru78A5yEASCeJgm7zKc0IAe2GEA==",
       "X-Amz-Cf-Pop": "BOS50-P3",
       "X-Asana-Api-Version": "1.1",
       "X-Cache": "Miss from cloudfront",
       "X-Content-Type-Options": "nosniff",
-      "X-Envoy-Upstream-Service-Time": "82",
+      "X-Envoy-Upstream-Service-Time": "59",
       "X-Frame-Options": "DENY,DENY",
       "X-Robots-Tag": "none",
       "X-Ua-Compatible": "IE=edge,chrome=1",
       "X-Xss-Protection": "1; mode=block,1; mode=block"
     },
-    "body": "{\"data\":[]}"
+    "body": "{\"data\":[{\"gid\":\"1209139717563792\",\"completed\":false,\"due_at\":null,\"due_on\":\"2025-04-04\",\"name\":\"Turn on security cameras\",\"notes\":\"\"}]}"
   }
 }

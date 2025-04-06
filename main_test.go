@@ -43,7 +43,7 @@ func TestMainWithSnapshots(t *testing.T) {
 
 	// Use default configuration and dry run mode for tests
 	config := asana.DefaultSectionConfig()
-	dryRun := true
-	
+	dryRun := false
+
 	run(client, config, dryRun)
 }

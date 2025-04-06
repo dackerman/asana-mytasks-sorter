@@ -1,9 +1,10 @@
 {
   "request": {
-    "method": "GET",
-    "url": "https://app.asana.com/api/1.0/workspaces",
+    "method": "POST",
+    "url": "https://app.asana.com/api/1.0/sections/1209902860698612/addTask",
     "headers": {
-      "Accept": "application/json"
+      "Accept": "application/json",
+      "Content-Type": "application/json"
     },
     "body": ""
   },
@@ -11,26 +12,28 @@
     "status_code": 200,
     "headers": {
       "Asana-Change": "name=cross_workspace_deprecation;info=https://forum.asana.com/t/change-get-projects-get-users-and-get-tags-will-require-a-workspace-or-team/1031581,name=new_user_task_lists;info=https://forum.asana.com/t/update-on-our-planned-api-changes-to-user-task-lists-a-k-a-my-tasks/103828,name=new_goal_memberships;info=https://forum.asana.com/t/launched-team-sharing-for-goals/378601;affected=true",
-      "Content-Length": "93",
+      "Cache-Control": "no-store",
+      "Content-Length": "11",
       "Content-Security-Policy": "report-uri https://app.asana.com/-/csp_report?report_only=false;default-src 'none';frame-src 'none';frame-ancestors 'none'",
       "Content-Type": "application/json; charset=UTF-8",
-      "Date": "Sun, 06 Apr 2025 01:20:53 GMT",
+      "Date": "Sun, 06 Apr 2025 01:20:58 GMT",
+      "Pragma": "no-cache",
       "Referrer-Policy": "strict-origin-when-cross-origin",
       "Server": "istio-envoy",
-      "Server-Timing": "cdn-upstream-layer;desc=\"REC\",cdn-upstream-dns;dur=0,cdn-upstream-connect;dur=0,cdn-upstream-fbl;dur=281,cdn-cache-miss,cdn-pop;desc=\"BOS50-P3\",cdn-rid;desc=\"JFP04bo9sRt2FCPSaF6H7fnIHW8W7bKmU5LLUbBEXxvEfEnzTkkIfA==\",cdn-downstream-fbl;dur=312",
+      "Server-Timing": "cdn-upstream-layer;desc=\"REC\",cdn-upstream-dns;dur=0,cdn-upstream-connect;dur=0,cdn-upstream-fbl;dur=513,cdn-cache-miss,cdn-pop;desc=\"BOS50-P3\",cdn-rid;desc=\"OXd5n7TrQkKDgO-m7BsAz1a1k8CXTdVjMRnae5oWSyRSQ635G994HA==\",cdn-downstream-fbl;dur=543",
       "Strict-Transport-Security": "max-age=31536000; includeSubDomains; preload",
       "Via": "1.1 5bf4d747be36bbd75379552d7669c798.cloudfront.net (CloudFront)",
-      "X-Amz-Cf-Id": "JFP04bo9sRt2FCPSaF6H7fnIHW8W7bKmU5LLUbBEXxvEfEnzTkkIfA==",
+      "X-Amz-Cf-Id": "OXd5n7TrQkKDgO-m7BsAz1a1k8CXTdVjMRnae5oWSyRSQ635G994HA==",
       "X-Amz-Cf-Pop": "BOS50-P3",
-      "X-Asana-Api-Version": "1.1",
+      "X-Asana-Api-Version": "1.0",
       "X-Cache": "Miss from cloudfront",
       "X-Content-Type-Options": "nosniff",
-      "X-Envoy-Upstream-Service-Time": "278",
+      "X-Envoy-Upstream-Service-Time": "511",
       "X-Frame-Options": "DENY",
       "X-Robots-Tag": "none",
       "X-Ua-Compatible": "IE=edge,chrome=1",
       "X-Xss-Protection": "1; mode=block"
     },
-    "body": "{\"data\":[{\"gid\":\"1200459986504480\",\"name\":\"Ackerman Household\",\"resource_type\":\"workspace\"}]}"
+    "body": "{\"data\":{}}"
   }
 }

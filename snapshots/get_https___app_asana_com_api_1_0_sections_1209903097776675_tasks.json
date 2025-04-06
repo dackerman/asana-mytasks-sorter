@@ -1,7 +1,7 @@
 {
   "request": {
     "method": "GET",
-    "url": "https://app.asana.com/api/1.0/sections/1202808117491090/tasks?completed_since=now\u0026opt_fields=name,notes,completed,due_on,due_at",
+    "url": "https://app.asana.com/api/1.0/sections/1209903097776675/tasks?completed_since=now\u0026opt_fields=name,notes,completed,due_on,due_at",
     "headers": {
       "Accept": "application/json"
     },
@@ -14,18 +14,18 @@
       "Content-Length": "11",
       "Content-Security-Policy": "report-uri https://app.asana.com/-/csp_report?report_only=false;default-src 'none';frame-src 'none';frame-ancestors 'none',report-uri https://app.asana.com/-/csp_report?report_only=false;default-src 'none';frame-src 'none';frame-ancestors 'none'",
       "Content-Type": "application/json; charset=UTF-8",
-      "Date": "Sun, 06 Apr 2025 01:21:04 GMT",
+      "Date": "Sun, 06 Apr 2025 01:20:56 GMT",
       "Referrer-Policy": "strict-origin-when-cross-origin",
       "Server": "istio-envoy",
-      "Server-Timing": "cdn-upstream-layer;desc=\"REC\",cdn-upstream-dns;dur=0,cdn-upstream-connect;dur=0,cdn-upstream-fbl;dur=85,cdn-cache-miss,cdn-pop;desc=\"BOS50-P3\",cdn-rid;desc=\"ocJLoKpf94hs2TKFlzgz4UhpOo1sVC4sI3dd74gWJycupy5eIXc42A==\",cdn-downstream-fbl;dur=117",
+      "Server-Timing": "cdn-upstream-layer;desc=\"REC\",cdn-upstream-dns;dur=0,cdn-upstream-connect;dur=0,cdn-upstream-fbl;dur=115,cdn-cache-miss,cdn-pop;desc=\"BOS50-P3\",cdn-rid;desc=\"LyZeKcsba_1UmmKqwA_ui4T3gwBP2DbqMLiGAGmUsG_eUs3m1f-DKA==\",cdn-downstream-fbl;dur=152",
       "Strict-Transport-Security": "max-age=31536000; includeSubDomains; preload",
       "Via": "1.1 5bf4d747be36bbd75379552d7669c798.cloudfront.net (CloudFront)",
-      "X-Amz-Cf-Id": "ocJLoKpf94hs2TKFlzgz4UhpOo1sVC4sI3dd74gWJycupy5eIXc42A==",
+      "X-Amz-Cf-Id": "LyZeKcsba_1UmmKqwA_ui4T3gwBP2DbqMLiGAGmUsG_eUs3m1f-DKA==",
       "X-Amz-Cf-Pop": "BOS50-P3",
       "X-Asana-Api-Version": "1.1",
       "X-Cache": "Miss from cloudfront",
       "X-Content-Type-Options": "nosniff",
-      "X-Envoy-Upstream-Service-Time": "82",
+      "X-Envoy-Upstream-Service-Time": "113",
       "X-Frame-Options": "DENY,DENY",
       "X-Robots-Tag": "none",
       "X-Ua-Compatible": "IE=edge,chrome=1",
