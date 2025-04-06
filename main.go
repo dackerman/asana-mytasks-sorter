@@ -132,9 +132,21 @@ func run(client *asana.Client, config asana.SectionConfig, dryRun bool) {
 		}
 	}
 
-	// Collect all tasks from all sections
+	// Create a map of ignored sections for quick lookup
+	ignoredSections := make(map[string]bool)
+	for _, sectionName := range config.IgnoredSections {
+		ignoredSections[sectionName] = true
+	}
+
+	// Collect all tasks from non-ignored sections
 	allTasks := []asana.Task{}
 	for _, section := range sections {
+		// Skip ignored sections
+		if ignoredSections[section.Name] {
+			fmt.Printf("Skipping ignored section: %s\n", section.Name)
+			continue
+		}
+		
 		tasks, err := client.GetTasksInSection(section.GID)
 		if err != nil {
 			fmt.Printf("Error getting tasks for section %s: %v\n", section.Name, err)
@@ -166,6 +178,12 @@ func run(client *asana.Client, config asana.SectionConfig, dryRun bool) {
 	if !dryRun {
 		fmt.Println("\nMoving tasks to appropriate sections...")
 		for category, sectionName := range categoryToSection {
+			// Skip if target section is in the ignored list
+			if ignoredSections[sectionName] {
+				fmt.Printf("Skipping moving tasks to ignored section: %s\n", sectionName)
+				continue
+			}
+			
 			sectionGID, exists := sectionNameToGID[sectionName]
 			if !exists {
 				fmt.Printf("Error: Section '%s' not found, skipping tasks\n", sectionName)
@@ -195,6 +213,12 @@ func run(client *asana.Client, config asana.SectionConfig, dryRun bool) {
 				// Skip if task is already in the correct section
 				if currentSectionName == sectionName {
 					fmt.Printf("Task '%s' already in correct section: %s\n", task.Name, sectionName)
+					continue
+				}
+
+				// Skip if task is currently in an ignored section
+				if ignoredSections[currentSectionName] {
+					fmt.Printf("Task '%s' is in ignored section '%s', skipping\n", task.Name, currentSectionName)
 					continue
 				}
 

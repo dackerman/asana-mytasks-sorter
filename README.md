@@ -13,6 +13,7 @@ Vibe-coded from scratch with ✨good vibes only✨, this tool connects to the As
 - **Due Date Categorization**: Tasks are automatically categorized by due date into "Overdue", "Due Today", "Due This Week", and "Due Later" sections
 - **Automatic Task Organization**: Tasks are moved to the appropriate sections in Asana based on their due dates
 - **Customizable Categories**: Customize category names through a simple JSON configuration file
+- **Ignored Sections**: Specify sections to ignore so tasks in those sections don't get moved
 - **Section Management**: Automatically creates required sections if they don't exist
 - **Due Dates**: Shows due dates alongside each task
 - **Workspace Selection**: Connects to your Asana workspace
@@ -66,9 +67,12 @@ You can customize the section names by creating a JSON file with the following s
   "due_today": "Due today",
   "due_this_week": "Due within the next 7 days",
   "due_later": "Due later",
-  "no_date": "Recently assigned"
+  "no_date": "Recently assigned",
+  "ignored_sections": ["Doing Now", "Waiting For"]
 }
 ```
+
+The `ignored_sections` field is optional and allows you to specify sections that should not have their tasks moved or be moved to. Tasks in these sections will stay where they are.
 
 Example output:
 
