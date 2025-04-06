@@ -13,7 +13,7 @@ import (
 
 func main() {
 	// Define command-line flags
-	configFile := flag.String("config", "sections_config.json", "Path to section configuration file")
+	configFile := flag.String("config", "", "Path to section configuration file")
 	dryRun := flag.Bool("dry-run", false, "Only display changes without moving tasks")
 	flag.Parse()
 
@@ -28,10 +28,14 @@ func main() {
 	client := asana.NewClient(accessToken)
 
 	// Load section config
-	config, err := loadSectionConfig(*configFile)
-	if err != nil {
-		fmt.Printf("Error loading section config: %v\nUsing default configuration\n", err)
-		config = asana.DefaultSectionConfig()
+	config := asana.DefaultSectionConfig()
+	if *configFile != "" {
+		loadedConfig, err := loadSectionConfig(*configFile)
+		if err == nil {
+			config = loadedConfig
+		} else {
+			fmt.Printf("Error loading section config: %v\nUsing default configuration\n", err)
+		}
 	}
 
 	run(client, config, *dryRun)
@@ -146,7 +150,7 @@ func run(client *asana.Client, config asana.SectionConfig, dryRun bool) {
 			fmt.Printf("Skipping ignored section: %s\n", section.Name)
 			continue
 		}
-		
+
 		tasks, err := client.GetTasksInSection(section.GID)
 		if err != nil {
 			fmt.Printf("Error getting tasks for section %s: %v\n", section.Name, err)
@@ -183,7 +187,7 @@ func run(client *asana.Client, config asana.SectionConfig, dryRun bool) {
 				fmt.Printf("Skipping moving tasks to ignored section: %s\n", sectionName)
 				continue
 			}
-			
+
 			sectionGID, exists := sectionNameToGID[sectionName]
 			if !exists {
 				fmt.Printf("Error: Section '%s' not found, skipping tasks\n", sectionName)
