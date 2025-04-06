@@ -11,19 +11,19 @@ import (
 
 // LoadConfiguration loads the configuration from a file or returns defaults
 func LoadConfiguration(configFile string) core.SectionConfig {
-	config := core.DefaultSectionConfig()
-	
-	if configFile == "" {
-		return config
+	// If the user explicitly asked for defaults
+	if configFile == "default" {
+		return core.DefaultSectionConfig()
 	}
 	
+	// Try to load from the file
 	loadedConfig, err := loadSectionConfig(configFile)
 	if err == nil {
 		return loadedConfig
 	}
 	
 	fmt.Printf("Error loading section config: %v\nUsing default configuration\n", err)
-	return config
+	return core.DefaultSectionConfig()
 }
 
 // loadSectionConfig loads the section configuration from a JSON file

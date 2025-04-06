@@ -90,16 +90,16 @@ move the tasks to the appropriate sections in Asana.`
 		
 		fmt.Println(ui.SectionTitle("Examples:"))
 		examplesText := `  # Run with default settings
-  asana-tasks-sorter
+  asana-tasks-sorter --config default
 
   # Use a custom configuration file
-  asana-tasks-sorter -config path/to/your/config.json
+  asana-tasks-sorter --config path/to/your/config.json
 
   # Preview changes without moving tasks
-  asana-tasks-sorter -dry-run
+  asana-tasks-sorter --config default --dry-run
 
   # Set a custom timeout for API operations
-  asana-tasks-sorter -timeout 60s`
+  asana-tasks-sorter --config default --timeout 60s`
 		fmt.Println(examplesText)
 		fmt.Println()
 		
@@ -108,15 +108,19 @@ move the tasks to the appropriate sections in Asana.`
 	}
 
 	// Parse command-line flags
-	configFile := flag.String("config", "", "Path to section configuration file")
+	configFile := flag.String("config", "", "Path to section configuration file or 'default' to use built-in defaults (required)")
 	dryRun := flag.Bool("dry-run", false, "Only display changes without moving tasks")
 	timeout := flag.Duration("timeout", 30*time.Second, "Timeout for API operations")
 	help := flag.Bool("help", false, "Show detailed help information")
 	flag.Parse()
 
-	// Show help if requested
-	if *help {
+	// Show help if requested or if no config is provided
+	if *help || flag.NArg() > 0 || *configFile == "" {
 		flag.Usage()
+		if !*help && *configFile == "" {
+			fmt.Println("\n" + ui.Error("Error: --config parameter is required"))
+			fmt.Println(ui.Info("Use --config default to use the built-in defaults"))
+		}
 		return
 	}
 
