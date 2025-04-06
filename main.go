@@ -142,22 +142,33 @@ func run(client *asana.Client, config asana.SectionConfig, dryRun bool) {
 		ignoredSections[sectionName] = true
 	}
 
-	// Collect all tasks from non-ignored sections
-	allTasks := []asana.Task{}
+	// Create a map of section IDs to names for easy lookup
+	sectionGIDToName := make(map[string]string)
 	for _, section := range sections {
-		// Skip ignored sections
-		if ignoredSections[section.Name] {
-			fmt.Printf("Skipping ignored section: %s\n", section.Name)
-			continue
-		}
-
-		tasks, err := client.GetTasksInSection(section.GID)
-		if err != nil {
-			fmt.Printf("Error getting tasks for section %s: %v\n", section.Name, err)
-			continue
-		}
-		allTasks = append(allTasks, tasks...)
+		sectionGIDToName[section.GID] = section.Name
 	}
+
+	// Collect all tasks from user task list at once
+	fmt.Println("Fetching all tasks from My Tasks list...")
+	allTasks, err := client.GetTasksFromUserTaskList(userTaskList.GID)
+	if err != nil {
+		fmt.Printf("Error getting tasks from user task list: %v\n", err)
+		os.Exit(1)
+	}
+
+	// Filter out tasks from ignored sections
+	filteredTasks := []asana.Task{}
+	for _, task := range allTasks {
+		// Skip tasks in ignored sections
+		sectionName := task.AssigneeSection.Name
+		if ignoredSections[sectionName] {
+			fmt.Printf("Skipping task in ignored section: %s (in section '%s')\n",
+				task.Name, sectionName)
+			continue
+		}
+		filteredTasks = append(filteredTasks, task)
+	}
+	allTasks = filteredTasks
 
 	// Sort tasks into categories based on due date
 	categorizedTasks := make(map[asana.TaskCategory][]asana.Task)
@@ -196,23 +207,8 @@ func run(client *asana.Client, config asana.SectionConfig, dryRun bool) {
 
 			tasks := categorizedTasks[category]
 			for _, task := range tasks {
-				// Find the current section of the task
-				var currentSectionName string
-				for _, section := range sections {
-					secTasks, err := client.GetTasksInSection(section.GID)
-					if err != nil {
-						continue
-					}
-					for _, secTask := range secTasks {
-						if secTask.GID == task.GID {
-							currentSectionName = section.Name
-							break
-						}
-					}
-					if currentSectionName != "" {
-						break
-					}
-				}
+				// Get current section name directly from the task
+				currentSectionName := task.AssigneeSection.Name
 
 				// Skip if task is already in the correct section
 				if currentSectionName == sectionName {
