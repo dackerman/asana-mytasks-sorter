@@ -55,6 +55,9 @@ Options:
 
 # Preview categorization without moving tasks in Asana
 ./asana-tasks-sorter -dry-run
+
+# Specify a custom timeout for API operations (default is 30 seconds)
+./asana-tasks-sorter -timeout 60s
 ```
 
 ### Configuration File
@@ -112,24 +115,35 @@ Found 5 tasks in 4 sections
 This project uses:
 
 - **Go Modules**: For package management
+- **Interface-Based Design**: For testability and decoupling
+- **Context Support**: For proper timeout and cancellation handling
 - **HTTP Client Abstraction**: For clean API communication
 - **Custom JSON Parsing**: For handling Asana's date formats
 - **Snapshot Testing**: Record & replay HTTP interactions for testing without an API token
-- **Structured Logging**: For clean, configurable output
+- **Proper Error Handling**: Using Go 1.13+ error wrapping
 
 ## 📊 Project Structure
 
 ```
 .
 ├── go.mod              # Go module definition
-├── main.go             # Main application entry point
-├── main_test.go        # Snapshot tests
+├── main.go             # Main application entry point (CLI handling)
+├── main_test.go        # Integration tests
+├── task_moves_test.go  # Unit tests for task sorting logic
 ├── sections_config.json # Custom section names configuration
 ├── internal/           # Internal packages
 │   ├── asana/          # Asana API client
-│   │   └── client.go   # API client implementation
-│   └── testing/        # Testing utilities
-│       └── snapshot.go # HTTP snapshot recorder/player
+│   │   ├── client.go   # API client implementation
+│   │   └── interface.go # API interface definition
+│   ├── config/         # Configuration handling
+│   │   └── loader.go   # Configuration loading logic
+│   ├── core/           # Core business logic
+│   │   ├── config.go   # Domain configuration types
+│   │   └── tasks.go    # Task categorization and management
+│   ├── testing/        # Testing utilities
+│   │   └── snapshot.go # HTTP snapshot recorder/player
+│   └── ui/             # User interface components
+│       └── display.go  # Task display formatting
 └── snapshots/          # Recorded API interactions for tests
 ```
 
