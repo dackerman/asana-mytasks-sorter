@@ -11,7 +11,7 @@ import (
 func TestCalculateTaskMoves(t *testing.T) {
 	// Define a fixed reference time for tests (2023-04-15)
 	referenceTime := time.Date(2023, 4, 15, 12, 0, 0, 0, time.UTC)
-	
+
 	// Helper function to create a test task
 	createTask := func(name string, dueDate string, sectionName string) asana.Task {
 		var parsedDate asana.Date
@@ -22,10 +22,10 @@ func TestCalculateTaskMoves(t *testing.T) {
 			}
 			parsedDate = asana.Date(t)
 		}
-		
+
 		return asana.Task{
-			GID:  "task_" + name,
-			Name: name,
+			GID:   "task_" + name,
+			Name:  name,
 			DueOn: parsedDate,
 			AssigneeSection: asana.AssigneeSection{
 				GID:  "section_" + sectionName,
@@ -33,30 +33,30 @@ func TestCalculateTaskMoves(t *testing.T) {
 			},
 		}
 	}
-	
+
 	// Test cases
 	testCases := []struct {
-		name            string
-		tasks           []asana.Task
-		config          core.SectionConfig
+		name             string
+		tasks            []asana.Task
+		config           core.SectionConfig
 		sectionNameToGID map[string]string
-		ignoredSections map[string]bool
-		expectedMoves   []core.TaskMove
+		ignoredSections  map[string]bool
+		expectedMoves    []core.TaskMove
 	}{
 		{
 			name: "Tasks in correct sections should not move",
 			tasks: []asana.Task{
-				createTask("Task 1", "2023-04-15", "Due today"), // Today's date, already in Due today
-				createTask("Task 2", "2023-04-10", "Overdue"),   // Past date, already in Overdue
+				createTask("Task 1", "2023-04-15", "Due today"),                  // Today's date, already in Due today
+				createTask("Task 2", "2023-04-10", "Overdue"),                    // Past date, already in Overdue
 				createTask("Task 3", "2023-04-20", "Due within the next 7 days"), // Within a week, already correct
-				createTask("Task 4", "2023-05-15", "Due later"), // More than a week, already correct
-				createTask("Task 5", "", "Recently assigned"),   // No date, already in correct section
+				createTask("Task 4", "2023-05-15", "Due later"),                  // More than a week, already correct
+				createTask("Task 5", "", "Recently assigned"),                    // No date, already in correct section
 			},
 			config: core.SectionConfig{
 				Overdue:     "Overdue",
 				DueToday:    "Due today",
 				DueThisWeek: "Due within the next 7 days",
-				DueLater:    "Due later", 
+				DueLater:    "Due later",
 				NoDate:      "Recently assigned",
 			},
 			sectionNameToGID: map[string]string{
@@ -72,11 +72,11 @@ func TestCalculateTaskMoves(t *testing.T) {
 		{
 			name: "Tasks in wrong sections should move",
 			tasks: []asana.Task{
-				createTask("Task 1", "2023-04-15", "Overdue"),   // Today's date, should move to Due today
-				createTask("Task 2", "2023-04-10", "Due today"), // Past date, should move to Overdue
-				createTask("Task 3", "2023-04-20", "Due later"), // Within a week, should move to Due this week
+				createTask("Task 1", "2023-04-15", "Overdue"),                    // Today's date, should move to Due today
+				createTask("Task 2", "2023-04-10", "Due today"),                  // Past date, should move to Overdue
+				createTask("Task 3", "2023-04-20", "Due later"),                  // Within a week, should move to Due this week
 				createTask("Task 4", "2023-05-15", "Due within the next 7 days"), // Far future, should move to Due later
-				createTask("Task 5", "", "Due today"),           // No date, should move to Recently assigned
+				createTask("Task 5", "", "Due today"),                            // No date, should move to Recently assigned
 			},
 			config: core.SectionConfig{
 				Overdue:     "Overdue",
@@ -124,7 +124,7 @@ func TestCalculateTaskMoves(t *testing.T) {
 		{
 			name: "Tasks in ignored sections should not move",
 			tasks: []asana.Task{
-				createTask("Task 1", "2023-04-10", "Doing Now"),  // Past date, but in ignored section
+				createTask("Task 1", "2023-04-10", "Doing Now"),   // Past date, but in ignored section
 				createTask("Task 2", "2023-05-15", "Waiting For"), // Future date, but in ignored section
 			},
 			config: core.SectionConfig{
@@ -150,7 +150,7 @@ func TestCalculateTaskMoves(t *testing.T) {
 		{
 			name: "Tasks should not move to ignored target sections",
 			tasks: []asana.Task{
-				createTask("Task 1", "2023-04-15", "Custom Section"), // Today's date, but Due today is ignored
+				createTask("Task 1", "2023-04-15", "Custom Section"),  // Today's date, but Due today is ignored
 				createTask("Task 2", "2023-04-10", "Another Section"), // Past date, but Overdue is ignored
 			},
 			config: core.SectionConfig{
@@ -176,14 +176,14 @@ func TestCalculateTaskMoves(t *testing.T) {
 		{
 			name: "Tasks should not move to sections that don't exist",
 			tasks: []asana.Task{
-				createTask("Task 1", "2023-04-15", "Custom Section"), // Today's date
+				createTask("Task 1", "2023-04-15", "Custom Section"),  // Today's date
 				createTask("Task 2", "2023-04-10", "Another Section"), // Past date
 			},
 			config: core.SectionConfig{
 				Overdue:     "Overdue",
 				DueToday:    "Due today",
 				DueThisWeek: "Due within the next 7 days",
-				DueLater:    "Due later", 
+				DueLater:    "Due later",
 				NoDate:      "Recently assigned",
 			},
 			sectionNameToGID: map[string]string{
@@ -238,41 +238,41 @@ func TestCalculateTaskMoves(t *testing.T) {
 			},
 		},
 	}
-	
+
 	// Run tests
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			moves := core.CalculateTaskMoves(tc.tasks, tc.config, tc.sectionNameToGID, tc.ignoredSections, referenceTime)
-			
+
 			// For test cases where we expect no moves, just check the length
 			if len(tc.expectedMoves) == 0 && len(moves) == 0 {
 				// Both are empty, this is correct
 				return
 			}
-			
+
 			// For test cases with expected moves, compare the details
 			if len(moves) != len(tc.expectedMoves) {
 				t.Errorf("Expected %d moves, got %d", len(tc.expectedMoves), len(moves))
 				return
 			}
-			
+
 			// Convert to a comparable format and check for equality
 			// This approach avoids issues with direct struct comparisons
 			for i, move := range moves {
 				expected := tc.expectedMoves[i]
-				
+
 				if move.Task.GID != expected.Task.GID {
 					t.Errorf("Move %d: Expected Task.GID=%s, got %s", i, expected.Task.GID, move.Task.GID)
 				}
-				
+
 				if move.Task.Name != expected.Task.Name {
 					t.Errorf("Move %d: Expected Task.Name=%s, got %s", i, expected.Task.Name, move.Task.Name)
 				}
-				
+
 				if move.SectionGID != expected.SectionGID {
 					t.Errorf("Move %d: Expected SectionGID=%s, got %s", i, expected.SectionGID, move.SectionGID)
 				}
-				
+
 				if move.SectionName != expected.SectionName {
 					t.Errorf("Move %d: Expected SectionName=%s, got %s", i, expected.SectionName, move.SectionName)
 				}
@@ -287,21 +287,21 @@ func TestTaskMoveStruct(t *testing.T) {
 		GID:  "task_123",
 		Name: "Test Task",
 	}
-	
+
 	move := core.TaskMove{
 		Task:        task,
 		SectionGID:  "section_456",
 		SectionName: "New Section",
 	}
-	
+
 	if move.Task.GID != "task_123" {
 		t.Errorf("Expected Task.GID to be 'task_123', got '%s'", move.Task.GID)
 	}
-	
+
 	if move.SectionGID != "section_456" {
 		t.Errorf("Expected SectionGID to be 'section_456', got '%s'", move.SectionGID)
 	}
-	
+
 	if move.SectionName != "New Section" {
 		t.Errorf("Expected SectionName to be 'New Section', got '%s'", move.SectionName)
 	}
@@ -320,7 +320,7 @@ func TestDateCalculations(t *testing.T) {
 		"Recently assigned":          "section_Recently assigned",
 	}
 	ignoredSections := map[string]bool{}
-	
+
 	testCases := []struct {
 		dueDate          string
 		currentSection   string
@@ -331,22 +331,22 @@ func TestDateCalculations(t *testing.T) {
 		// Overdue dates
 		{"2023-04-14", "Wrong Section", asana.Overdue, "Overdue", true},
 		{"2023-01-01", "Wrong Section", asana.Overdue, "Overdue", true},
-		
+
 		// Today
 		{"2023-04-15", "Wrong Section", asana.DueToday, "Due today", true},
-		
+
 		// Within next 7 days
 		{"2023-04-16", "Wrong Section", asana.DueThisWeek, "Due within the next 7 days", true}, // Tomorrow
 		{"2023-04-22", "Wrong Section", asana.DueThisWeek, "Due within the next 7 days", true}, // 7 days from now
-		
+
 		// Due later
 		{"2023-04-23", "Wrong Section", asana.DueLater, "Due later", true}, // 8 days from now
 		{"2023-05-01", "Wrong Section", asana.DueLater, "Due later", true},
 		{"2024-01-01", "Wrong Section", asana.DueLater, "Due later", true},
-		
+
 		// No date
 		{"", "Wrong Section", asana.NoDate, "Recently assigned", true},
-		
+
 		// Already in correct section
 		{"2023-04-14", "Overdue", asana.Overdue, "Overdue", false},
 		{"2023-04-15", "Due today", asana.DueToday, "Due today", false},
@@ -354,7 +354,7 @@ func TestDateCalculations(t *testing.T) {
 		{"2023-05-01", "Due later", asana.DueLater, "Due later", false},
 		{"", "Recently assigned", asana.NoDate, "Recently assigned", false},
 	}
-	
+
 	for _, tc := range testCases {
 		t.Run(tc.dueDate+"-"+tc.currentSection, func(t *testing.T) {
 			// Create test task
@@ -371,8 +371,8 @@ func TestDateCalculations(t *testing.T) {
 			} else {
 				dueDate, _ := time.Parse("2006-01-02", tc.dueDate)
 				task = asana.Task{
-					GID:  "task_test",
-					Name: "Test Task",
+					GID:   "task_test",
+					Name:  "Test Task",
 					DueOn: asana.Date(dueDate),
 					AssigneeSection: asana.AssigneeSection{
 						GID:  "section_" + tc.currentSection,
@@ -380,17 +380,17 @@ func TestDateCalculations(t *testing.T) {
 					},
 				}
 			}
-			
+
 			// Calculate the actual category
 			actualCategory := task.GetTaskCategory(referenceTime)
 			if actualCategory != tc.expectedCategory {
-				t.Errorf("Expected category %v for date %s, got %v", 
+				t.Errorf("Expected category %v for date %s, got %v",
 					tc.expectedCategory, tc.dueDate, actualCategory)
 			}
-			
+
 			// Calculate moves
 			moves := core.CalculateTaskMoves([]asana.Task{task}, config, sectionNameToGID, ignoredSections, referenceTime)
-			
+
 			// Check if the task should move
 			if tc.shouldMove && len(moves) == 0 {
 				t.Errorf("Expected task to move for date %s from section %s to %s, but no move was calculated",
@@ -399,7 +399,7 @@ func TestDateCalculations(t *testing.T) {
 				t.Errorf("Expected task NOT to move for date %s from section %s, but a move was calculated",
 					tc.dueDate, tc.currentSection)
 			}
-			
+
 			// If it should move, verify the target section
 			if tc.shouldMove && len(moves) > 0 {
 				if moves[0].SectionName != tc.expectedSection {
